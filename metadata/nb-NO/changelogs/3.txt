@@ -1,2 +1,0 @@
-* Forbedret programoppstartstid
-* Innstilling for sortering av tjenere

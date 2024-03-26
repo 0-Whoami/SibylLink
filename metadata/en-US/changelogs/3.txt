@@ -1,2 +1,0 @@
-* Improve app startup time
-* Added a preference to sort Servers

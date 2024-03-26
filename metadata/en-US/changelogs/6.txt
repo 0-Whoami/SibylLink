@@ -1,3 +1,0 @@
-* Improved keyboard shortcuts support
-* Improved diacritic (accent) support
-* Added full immersive mode (experimental)

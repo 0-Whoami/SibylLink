@@ -1,3 +1,0 @@
-* Improve support for multi-homed SSH hosts
-* Fixed incorrect gesture detection on some devices
-* Fixed possible crash during 2-finger swipe

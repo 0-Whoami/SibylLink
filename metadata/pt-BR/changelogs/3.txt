@@ -1,2 +1,0 @@
-* Melhore o tempo de inicialização do aplicativo
-* Adicionada uma preferência para classificar os servidores

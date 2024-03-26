@@ -1,3 +1,0 @@
-* Wzmocnić tunel SSH
-* Naprawić wyciek z przekierowania portów
-* Zaktualizuj metadane aplikacji

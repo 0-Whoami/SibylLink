@@ -1,3 +1,0 @@
-* Harden SSH Tunnel
-* Fix port-forwarder leak
-* Update app metadata

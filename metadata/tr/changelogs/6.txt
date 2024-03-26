@@ -1,3 +1,0 @@
-* Klavye kısayolları desteği iyileştirildi
-* Aksanlı karakter desteği iyileştirildi
-* Tam odaklanma modu eklendi (deneysel)

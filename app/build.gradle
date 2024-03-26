@@ -1,29 +1,21 @@
 plugins {
     id 'com.android.application' version '8.2.0'
-    id 'org.jetbrains.kotlin.android' version '1.9.10'
+    id 'org.jetbrains.kotlin.android' version '1.9.23'
     id 'org.jetbrains.kotlin.kapt' version '1.9.10'
-    id 'org.jetbrains.kotlin.plugin.serialization' version '1.9.10'
-    id "org.jetbrains.kotlin.plugin.parcelize" version "1.9.10"
 }
 
 android {
-    namespace 'com.gaurav.avnc'
+    namespace 'sibyllink.vnc'
 
     compileSdk 34
     ndkVersion "26.1.10909125"
 
     defaultConfig {
-        applicationId "com.gaurav.avnc"
-        minSdk 21
+        applicationId "sibyllink.vnc"
+        minSdk 30
         targetSdk 34
         versionCode 31
         versionName "2.4.2"
-
-        javaCompileOptions {
-            annotationProcessorOptions {
-                arguments += ["room.schemaLocation": "$projectDir/roomSchema/".toString()]
-            }
-        }
 
         externalNativeBuild {
             cmake {
@@ -33,12 +25,11 @@ android {
             }
         }
 
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary true
+        }
     }
-
-    sourceSets {
-        androidTest.assets.srcDirs += files("$projectDir/roomSchema".toString())
-    }
+    
 
     buildTypes {
 
@@ -58,10 +49,13 @@ android {
             versionNameSuffix ' (CI)'
         }
     }
-
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.11"
+    }
     buildFeatures {
         dataBinding true
         buildConfig true
+        compose true
     }
 
     externalNativeBuild {
@@ -73,10 +67,22 @@ android {
 
     bundle {
         density {
-            enableSplit false
+            enableSplit true
         }
         language {
-            enableSplit false
+            enableSplit true
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+    packaging {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
     }
 }
@@ -86,35 +92,21 @@ kotlin {
 }
 
 dependencies {
+    implementation 'androidx.compose.ui:ui'
+
+    // Android Studio Preview support
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    implementation 'androidx.activity:activity-compose:1.8.2'
+    implementation 'androidx.compose.ui:ui-graphics'
+
+    implementation platform('androidx.compose:compose-bom:2024.03.00')
+    implementation "androidx.wear.compose:compose-material:1.4.0-alpha05"
+    implementation "androidx.wear.compose:compose-foundation:1.4.0-alpha05"
+    implementation("androidx.compose.material:material-icons-extended:1.6.4")
+    implementation ("com.google.android.horologist:horologist-compose-layout:0.6.3")
+
     implementation "androidx.core:core-ktx:1.12.0"
-    implementation 'androidx.activity:activity-ktx:1.8.2'
-    implementation "androidx.fragment:fragment-ktx:1.6.2"
-    implementation "androidx.appcompat:appcompat:1.6.1"
-    implementation "androidx.dynamicanimation:dynamicanimation:1.0.0"
-    implementation "androidx.biometric:biometric-ktx:1.2.0-alpha05"
-    implementation "androidx.preference:preference-ktx:1.2.1"
-    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2"
-    implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.6.2"
-    implementation "androidx.recyclerview:recyclerview:1.2.1"
-    implementation "androidx.constraintlayout:constraintlayout:2.1.4"
-    implementation "androidx.drawerlayout:drawerlayout:1.1.1"
-
-    def roomVersion = "2.6.1"
-    implementation "androidx.room:room-runtime:$roomVersion"
-    implementation "androidx.room:room-ktx:$roomVersion"
-    kapt "androidx.room:room-compiler:$roomVersion"
-
-    implementation "com.google.android.material:material:1.7.0"
-    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0'
-    implementation 'org.connectbot:sshlib:2.2.23'
-
-    testImplementation "junit:junit:4.13.2"
-    androidTestImplementation "androidx.test:runner:1.5.2"
-    androidTestImplementation "androidx.test.espresso:espresso-core:3.5.1"
-    androidTestImplementation "androidx.test.espresso:espresso-contrib:3.5.1"
-    androidTestImplementation "androidx.test.espresso:espresso-intents:3.5.1"
-    androidTestImplementation "androidx.test:rules:1.5.0"
-    androidTestImplementation "androidx.test.ext:junit-ktx:1.1.5"
-    androidTestImplementation "androidx.room:room-testing:$roomVersion"
-    androidTestImplementation "io.mockk:mockk-android:1.12.0"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0"
+    implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.7.0"
 }

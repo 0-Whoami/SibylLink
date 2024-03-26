@@ -1,2 +1,0 @@
-* Poprawiono czas uruchamiania aplikacji
-* Dodano preferencję sortowania serwerów
