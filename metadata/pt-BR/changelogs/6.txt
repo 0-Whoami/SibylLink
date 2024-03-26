@@ -1,3 +1,0 @@
-* Suporte a atalhos de teclado aprimorado
-* Suporte a diacríticos (acentos) aprimorado
-* Adicionado modo de imersão total (experimental)

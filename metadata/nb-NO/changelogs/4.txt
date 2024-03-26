@@ -1,3 +1,0 @@
-* Tillagt Samsung-pekeflate-støtte (av Tuan Pham)
-* Tillagt pekepinne/penn-støtte
-* TIllagt håndvending for to-fingertrykk

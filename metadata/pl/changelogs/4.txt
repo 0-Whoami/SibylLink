@@ -1,3 +1,0 @@
-* Dodano obsługę touchpada Samsunga (autor: Tuan Pham)
-* Dodano obsługę rysików/penów
-* Dodano gest stuknięcia dwoma palcami

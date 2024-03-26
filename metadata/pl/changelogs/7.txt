@@ -1,3 +1,0 @@
-* Dodano tłumaczenie na język portugalski (BR) (by inkhorn)
-* Dodano preferencję ukrywania lokalnego kursora systemu Android (przez Henry'ego H)
-* Poprawiono obsługę poduszki rysika na niektórych urządzeniach (autor: Henry H)

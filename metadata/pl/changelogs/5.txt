@@ -1,3 +1,0 @@
-* Umożliwić mapowanie klawiszy do klawiszy SUPER/Window (autor: Tuan Pham)
-* Upewnienie się, że wirtualne meta-klawisze są zawsze zwalniane (autor: thechosenreader)
-* Dodano obsługę znaków diakrytycznych (akcentów)

@@ -1,3 +1,0 @@
-* Endureça o túnel SSH
-* Corrija o vazamento do encaminhador de porta
-* Atualizar metadados do aplicativo

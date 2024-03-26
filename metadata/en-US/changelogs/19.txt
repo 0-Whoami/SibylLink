@@ -1,1 +1,0 @@
-* Fixed a possible crash while swiping on 'Disconnected' screen

@@ -1,2 +1,0 @@
-* Show navigation-bar with keyboard on Android 11
-* Fix server export

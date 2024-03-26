@@ -1,3 +1,0 @@
-* SÜPER/Windows tuşu için tuş eşlemeleri eklendi (Tuan Pham tarafından)
-* Sanal üst anahtarların her zaman serbest bırakıldığından emin olundu (thechosenreader tarafından)
-* Aksanlı karakter desteği eklendi

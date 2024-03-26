@@ -1,3 +1,0 @@
-* SSH tüneli daha güvenli hale getirildi
-* Bağlantı noktası yönlendirici sızıntısı düzeltildi
-* Uygulama üst verileri güncellendi
