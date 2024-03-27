@@ -11,6 +11,7 @@ package sibyllink.vnc.ui.vnc
 import android.annotation.SuppressLint
 import android.content.Context
 import android.opengl.GLSurfaceView
+import android.text.InputType
 import android.util.AttributeSet
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -81,9 +82,8 @@ class FrameView(context: Context?, attrs: AttributeSet? = null) : GLSurfaceView(
     }
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
-        outAttrs.imeOptions = outAttrs.imeOptions or
-                EditorInfo.IME_FLAG_NO_EXTRACT_UI or
-                EditorInfo.IME_FLAG_NO_FULLSCREEN
+        outAttrs.inputType =
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
         return InputConnection()
     }
 

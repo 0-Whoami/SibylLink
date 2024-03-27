@@ -8,6 +8,7 @@
 
 package sibyllink.vnc.ui.vnc
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -16,20 +17,43 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import android.view.inputmethod.InputMethodManager
+import android.window.OnBackInvokedDispatcher
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.twotone.Keyboard
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.wear.compose.material.Icon
+import androidx.wear.compose.material.Text
 import sibyllink.vnc.model.ServerProfile
 import sibyllink.vnc.viewmodel.VncViewModel
 import sibyllink.vnc.viewmodel.VncViewModel.State.Companion.isConnected
@@ -68,6 +92,7 @@ class VncActivity : ComponentActivity() {
     private var wasConnectedWhenStopped = false
     private var onStartTime = 0L
     private lateinit var frameView: FrameView
+    private var showMenu by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -90,10 +115,14 @@ class VncActivity : ComponentActivity() {
                     val width = it.size.width.toFloat()
                     viewModel.frameState.setWindowSize(width, width)
                     viewModel.frameState.setViewportSize(width, width)
-                }) {
+                },
+                contentAlignment = Alignment.BottomCenter) {
                 AndroidView(factory = { frameView })
-
             }
+            if(showMenu)
+                Popup(properties = PopupProperties(), onDismissRequest = {showMenu=false}) {
+                    Buttons{showKeyboard()}
+                }
         }
 
         viewModel.frameViewRef = WeakReference(frameView)
@@ -108,7 +137,23 @@ class VncActivity : ComponentActivity() {
             wasConnectedWhenStopped = it.getBoolean("wasConnectedWhenStopped")
         }
     }
+    @Preview
+    @Composable
+    fun Buttons(text:String="Keyboard",icon:ImageVector=Icons.TwoTone.Keyboard,onClick:()->Unit={}){
+        Row(modifier = Modifier
+            .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(50))
+            .padding(5.dp)
+            .clickable { onClick() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+            Icon(imageVector = icon, contentDescription = null)
+            Text(text = text)
+        }
+    }
 
+    @Deprecated("Deprecated in Java")
+    @SuppressLint("MissingSuperCall")
+    override fun onBackPressed() {
+        showMenu=!showMenu
+    }
     override fun onStart() {
         super.onStart()
         frameView.onResume()

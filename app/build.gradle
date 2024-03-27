@@ -1,5 +1,5 @@
 plugins {
-    id 'com.android.application' version '8.2.0'
+    id 'com.android.application' version '8.2.2'
     id 'org.jetbrains.kotlin.android' version '1.9.23'
     id 'org.jetbrains.kotlin.kapt' version '1.9.10'
 }
@@ -16,11 +16,13 @@ android {
         targetSdk 34
         versionCode 31
         versionName "2.4.2"
+        resourceConfigurations += ['en', 'xhdpi']
 
         externalNativeBuild {
             cmake {
                 //We are not using STL
                 arguments '-DANDROID_STL=none'
+                cFlags  '-Os', '-fvisibility=hidden'
                 targets 'native-vnc', 'vncclient', 'turbojpeg-static', 'wolfssl'
             }
         }
@@ -40,6 +42,13 @@ android {
 
         release {
             minifyEnabled true
+            shrinkResources true
+            proguardFiles 'proguard-rules.pro'
+            debuggable false
+            jniDebuggable false
+            renderscriptDebuggable false
+            pseudoLocalesEnabled false
+            crunchPngs true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
 
@@ -53,7 +62,6 @@ android {
         kotlinCompilerExtensionVersion = "1.5.11"
     }
     buildFeatures {
-        dataBinding true
         buildConfig true
         compose true
     }
@@ -64,6 +72,18 @@ android {
             path file('CMakeLists.txt')
         }
     }
+    splits{
+        abi{ // Enables building multiple APKs per ABI.
+            enable true
+
+            // Resets the list of ABIs for Gradle to create APKs for to none.
+            reset()
+
+            // Specifies a list of ABIs for Gradle to create APKs for.
+            include "x86_64",'armeabi-v7a'
+            universalApk false
+        }
+    }
 
     bundle {
         density {
@@ -72,6 +92,7 @@ android {
         language {
             enableSplit true
         }
+
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
