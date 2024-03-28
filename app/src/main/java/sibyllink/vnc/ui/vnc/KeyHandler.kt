@@ -377,10 +377,6 @@ class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym:
         if (string.length == 1)
             return cpCache.apply { this[0] = string[0].code }
 
-        if (Build.VERSION.SDK_INT >= 24)
-            return string.codePoints().toArray()
-
-        //Otherwise, do simple conversion (will be incorrect non-MBP code points)
-        return string.map { it.code }.toIntArray()
+        return string.codePoints().toArray()
     }
 }

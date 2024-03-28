@@ -9,11 +9,17 @@
 package sibyllink.vnc.viewmodel
 
 import android.app.Application
-import android.graphics.RectF
 import android.util.Log
-import androidx.lifecycle.MutableLiveData
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import sibyllink.vnc.model.LoginInfo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import sibyllink.vnc.model.ServerProfile
 import sibyllink.vnc.ui.vnc.FrameState
 import sibyllink.vnc.ui.vnc.FrameView
@@ -23,12 +29,6 @@ import sibyllink.vnc.util.setClipboardText
 import sibyllink.vnc.vnc.Messenger
 import sibyllink.vnc.vnc.UserCredential
 import sibyllink.vnc.vnc.VncClient
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import java.io.IOException
 import java.lang.ref.WeakReference
 
@@ -106,20 +106,13 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
      * [VncClient.connected] - Simple boolean state, used most of the time
      * [state]               - More granular, used by observers & data binding
      */
-    val state = MutableLiveData(State.Created)
+    val state = MutableStateFlow(State.Created)
 
     /**
      * Reason for disconnecting.
      */
-    val disconnectReason = MutableLiveData("")
-
-    /**
-     * Fired when we need some credentials from user.
-     * It will trigger the Login dialog.
-     */
-    val loginInfoRequest = LiveRequest<LoginInfo.Type, LoginInfo>(LoginInfo(), viewModelScope)
-
-    /**
+    var disconnectReason by mutableStateOf("Waiting For Connection")
+   /**
      * Fired to unlock saved servers.
      */
     val serverUnlockRequest = LiveRequest<Any?, Boolean>(false, viewModelScope)
@@ -174,13 +167,12 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
                 preConnect()
                 connect()
                 processMessages()
-
             }.onFailure {
-                if (it is IOException) disconnectReason.postValue(it.message)
+                disconnectReason=it.message?:"Unknown Error"
                 Log.e("ReceiverCoroutine", "Connection failed", it)
             }
 
-            state.postValue(State.Disconnected)
+            state.value=State.Disconnected
 
             //Wait until activity is finished and viewmodel is cleaned up.
             runCatching { awaitCancellation() }
@@ -208,7 +200,7 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
             else -> throw IOException("Unknown Channel: ${profile.channelType}")
         }
 
-        state.postValue(State.Connected)
+        state.value=State.Connected
 
         // Initial sync, slightly delayed to allow extended clipboard negotiations
 //        launchIO { delay(1000L); sendClipboardText() }
@@ -303,20 +295,6 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
         }
     }
 
-    fun getLoginInfo(type: LoginInfo.Type): LoginInfo {
-        val vu = profile.username
-        val vp = profile.password
-
-
-        if (type == LoginInfo.Type.VNC_PASSWORD && vp.isNotBlank())
-            return LoginInfo(password = vp)
-
-        if (type == LoginInfo.Type.VNC_CREDENTIAL && vu.isNotBlank() && vp.isNotBlank())
-            return LoginInfo(username = vu, password = vp)
-
-        // Something is missing, so we have to ask the user
-        return loginInfoRequest.requestResponse(type)  // Blocking call
-    }
 
     /**
      * Resize remote desktop to match with local window size (if requested by user).
@@ -337,11 +315,11 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
      **************************************************************************/
 
     override fun onPasswordRequired(): String {
-        return getLoginInfo(LoginInfo.Type.VNC_PASSWORD).password
+        return profile.password
     }
 
     override fun onCredentialRequired(): UserCredential {
-        return getLoginInfo(LoginInfo.Type.VNC_CREDENTIAL).let { UserCredential(it.username, it.password) }
+        return profile.let { UserCredential(it.username, it.password) }
     }
 
     override fun onFramebufferUpdated() {

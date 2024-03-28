@@ -21,7 +21,7 @@ import javax.microedition.khronos.opengles.GL10
 /**
  * Frame renderer.
  */
-class Renderer(val viewModel: VncViewModel) : GLSurfaceView.Renderer {
+class Renderer(private val viewModel: VncViewModel) : GLSurfaceView.Renderer {
 
     private val projectionMatrix = FloatArray(16)
     private val hideCursor = viewModel.pref.input.hideRemoteCursor

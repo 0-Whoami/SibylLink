@@ -18,11 +18,6 @@ import kotlin.reflect.KProperty
  */
 data class ServerProfile(
         /**
-         * Descriptive name of the server (e.g. 'Kitchen PC').
-         */
-        var name: String = "",
-
-        /**
          * Internet address of the server (without port number).
          * This can be hostname or IP address.
          */
@@ -105,12 +100,6 @@ data class ServerProfile(
          * This is accessed via individual members like [fLegacyKeySym].
          */
         var flags: Long = FLAG_LEGACY_KEYSYM,
-
-        /**
-         * Usage count tracks how many times user has connected to a server.
-         * Can be used to put frequent servers on top.
-         */
-        var useCount: Int = 0,
 
         /**
          * Whether UltraVNC Repeater is used for connections.

@@ -14,10 +14,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.SystemClock
-import android.util.Log
 import android.view.KeyEvent
 import android.view.inputmethod.InputMethodManager
-import android.window.OnBackInvokedDispatcher
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -25,26 +23,49 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.twotone.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.twotone.KeyboardTab
+import androidx.compose.material.icons.twotone.Close
 import androidx.compose.material.icons.twotone.Keyboard
+import androidx.compose.material.icons.twotone.KeyboardArrowDown
+import androidx.compose.material.icons.twotone.KeyboardArrowUp
+import androidx.compose.material.icons.twotone.KeyboardCommandKey
+import androidx.compose.material.icons.twotone.Upload
+import androidx.compose.material.icons.twotone.Window
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -54,14 +75,13 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.Text
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import sibyllink.vnc.model.ServerProfile
 import sibyllink.vnc.viewmodel.VncViewModel
 import sibyllink.vnc.viewmodel.VncViewModel.State.Companion.isConnected
 import sibyllink.vnc.viewmodel.VncViewModel.State.Companion.isDisconnected
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
-import kotlin.math.sqrt
 
 /********** [VncActivity] startup helpers *********************************/
 
@@ -76,8 +96,18 @@ fun createVncIntent(context: Context, profile: ServerProfile): Intent {
 fun startVncActivity(source: Activity, profile: ServerProfile) {
     source.startActivity(createVncIntent(source, profile))
 }
+
 /**************************************************************************/
 
+class PopupPosition : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize
+    ): IntOffset {
+        return IntOffset(
+            (windowSize.width - popupContentSize.width) / 2, (windowSize.height - popupContentSize.height) / 2
+        )
+    }
+}
 
 /**
  * This activity handles the connection to a VNC server.
@@ -109,19 +139,31 @@ class VncActivity : ComponentActivity() {
         frameView.initialize(this)
 
         setContent {
-            Box(modifier = Modifier
-                .fillMaxSize()
-                .onGloballyPositioned {
-                    val width = it.size.width.toFloat()
-                    viewModel.frameState.setWindowSize(width, width)
-                    viewModel.frameState.setViewportSize(width, width)
-                },
-                contentAlignment = Alignment.BottomCenter) {
+            var showKeys by remember { mutableStateOf(false) }
+                Box(modifier = Modifier
+                    .fillMaxSize()
+                    .onGloballyPositioned {
+                        val width = it.size.width.toFloat()
+
+                        viewModel.frameState.setWindowSize(width, width)
+                        viewModel.frameState.setViewportSize(width, width)
+                    }, contentAlignment = Alignment.BottomCenter) {
+                    
                 AndroidView(factory = { frameView })
-            }
-            if(showMenu)
-                Popup(properties = PopupProperties(), onDismissRequest = {showMenu=false}) {
-                    Buttons{showKeyboard()}
+                    
+                if (showKeys) ButtonArray()
+                }
+            if (showMenu)
+                Popup(
+                    properties = PopupProperties(),
+                    onDismissRequest = { showMenu = false },
+                    popupPositionProvider = PopupPosition()
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth(.5f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Buttons { showMenu = false;showKeyboard() }
+                        Buttons(text = "VirtualKeys", icon = Icons.TwoTone.KeyboardCommandKey) { showMenu = false;showKeys = !showKeys }
+                        Buttons(icon = Icons.TwoTone.Close, text = "Disconnect") { finish() }
+                    }
                 }
         }
 
@@ -129,31 +171,124 @@ class VncActivity : ComponentActivity() {
         setupServerUnlock()
 
         //Observers
-        viewModel.loginInfoRequest.observe(this) { showLoginDialog() }
-        viewModel.state.observe(this) { onClientStateChanged(it) }
+//        viewModel.loginInfoRequest.observe(this) { showLoginDialog() }
+        lifecycleScope.launchWhenResumed { viewModel.state.collect{ onClientStateChanged(it) } }
 
         savedInstanceState?.let {
             restoredFromBundle = true
             wasConnectedWhenStopped = it.getBoolean("wasConnectedWhenStopped")
         }
     }
+
+    @Composable
+    fun Buttons(text: String = "Keyboard", icon: ImageVector = Icons.TwoTone.Keyboard, onClick: () -> Unit = {}) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(50))
+                .padding(5.dp)
+                .clickable { onClick() },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = Color.Black)
+            Text(text = text, color = Color.Black)
+        }
+    }
+
+    @Composable
+    fun IconButton(enable: Boolean = false, icon: ImageVector, onClick: () -> Unit) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier
+                .padding(5.dp)
+                .background(if (enable) Color(0xf58692fc) else Color.White.copy(alpha = .8f), CircleShape)
+                .padding(5.dp)
+                .aspectRatio(1f)
+                .clickable { onClick() },
+            tint = if (enable) Color.White else Color.Black
+        )
+    }
+
+    @Composable
+    fun TextButton(enable: Boolean = false, text: String, onClick: () -> Unit) {
+        Text(
+            text = text,
+            modifier = Modifier
+                .aspectRatio(1f)
+                .padding(5.dp)
+                .background(if (enable) Color(0xf58692fc) else Color.White.copy(alpha = .8f), CircleShape)
+                .padding(5.dp)
+                .wrapContentHeight()
+                .clickable { onClick() },
+            color = if (enable) Color.White else Color.Black,
+            fontSize = 8.sp,
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
+        )
+
+    }
+
     @Preview
     @Composable
-    fun Buttons(text:String="Keyboard",icon:ImageVector=Icons.TwoTone.Keyboard,onClick:()->Unit={}){
-        Row(modifier = Modifier
-            .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(50))
-            .padding(5.dp)
-            .clickable { onClick() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
-            Icon(imageVector = icon, contentDescription = null)
-            Text(text = text)
+    fun ButtonArray() {
+        LazyRow(modifier = Modifier.size(120.dp, 40.dp)) {
+            //meta keys
+            item {
+                var enable by remember { mutableStateOf(false) }; IconButton(
+                enable = enable, icon = Icons.TwoTone.Window
+            ) { enable = !enable;keyHandler.onKeyEvent(KeyEvent.KEYCODE_META_LEFT, enable) }
+            }
+            item {
+                var enable by remember { mutableStateOf(false) }; IconButton(
+                enable = enable, icon = Icons.TwoTone.Upload
+            ) { enable = !enable;keyHandler.onKeyEvent(KeyEvent.KEYCODE_SHIFT_RIGHT, enable) }
+            }
+            item {
+                var enable by remember { mutableStateOf(false) }; TextButton(
+                enable = enable, text = "Ctrl"
+            ) { enable = !enable;keyHandler.onKeyEvent(KeyEvent.KEYCODE_CTRL_RIGHT, enable) }
+            }
+            item {
+                var enable by remember { mutableStateOf(false) }; TextButton(
+                enable = enable, text = "Alt"
+            ) { enable = !enable;keyHandler.onKeyEvent(KeyEvent.KEYCODE_ALT_RIGHT, enable) }
+            }
+            item {
+                var enable by remember { mutableStateOf(false) }; TextButton(enable = enable, text = "Fn") {
+                enable = !enable;keyHandler.onKeyEvent(KeyEvent.KEYCODE_FUNCTION, enable)
+            }
+            }
+            //normal button
+            item { IconButton(icon = Icons.AutoMirrored.TwoTone.KeyboardTab) { keyHandler.onKey(KeyEvent.KEYCODE_TAB) } }
+            item { TextButton(text = "Esc") { keyHandler.onKey(KeyEvent.KEYCODE_ESCAPE) } }
+            item { IconButton(icon = Icons.AutoMirrored.TwoTone.KeyboardArrowLeft) { keyHandler.onKey(KeyEvent.KEYCODE_DPAD_LEFT) } }
+            item { IconButton(icon = Icons.TwoTone.KeyboardArrowUp) { keyHandler.onKey(KeyEvent.KEYCODE_DPAD_UP) } }
+            item { IconButton(icon = Icons.TwoTone.KeyboardArrowDown) { keyHandler.onKey(KeyEvent.KEYCODE_DPAD_DOWN) } }
+            item { IconButton(icon = Icons.AutoMirrored.TwoTone.KeyboardArrowLeft) { keyHandler.onKey(KeyEvent.KEYCODE_DPAD_RIGHT) } }
+            item { TextButton(text = "Home") { keyHandler.onKey(KeyEvent.KEYCODE_MOVE_HOME) } }
+            item { TextButton(text = "End") { keyHandler.onKey(KeyEvent.KEYCODE_MOVE_END) } }
+            item { TextButton(text = "PgUp") { keyHandler.onKey(KeyEvent.KEYCODE_PAGE_UP) } }
+            item { TextButton(text = "PgDn") { keyHandler.onKey(KeyEvent.KEYCODE_PAGE_DOWN) } }
+            item { TextButton(text = "Insert") { keyHandler.onKey(KeyEvent.KEYCODE_INSERT) } }
+            item { TextButton(text = "Delete") { keyHandler.onKey(KeyEvent.KEYCODE_FORWARD_DEL) } }
+            items(12) {
+                TextButton(text = "F${it + 1}") { keyHandler.onKey(KeyEvent.KEYCODE_F1 + it) }
+            }
+
         }
     }
 
     @Deprecated("Deprecated in Java")
     @SuppressLint("MissingSuperCall")
     override fun onBackPressed() {
-        showMenu=!showMenu
+        if (viewModel.state.value.isDisconnected)
+            finish()
+        showMenu = !showMenu
     }
+
     override fun onStart() {
         super.onStart()
         frameView.onResume()
@@ -212,17 +347,12 @@ class VncActivity : ComponentActivity() {
         }
     }
 
-    private fun showLoginDialog() {
-//        LoginFragment().show(supportFragmentManager, "LoginDialog")
-    }
-
     fun showKeyboard() {
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
         frameView.requestFocus()
         imm.showSoftInput(frameView, 0)
 
-//        virtualKeys.onKeyboardOpen()
     }
 
     private fun onClientStateChanged(newState: VncViewModel.State) {
@@ -230,38 +360,10 @@ class VncActivity : ComponentActivity() {
 
         frameView.isVisible = isConnected
         frameView.keepScreenOn = isConnected && viewModel.pref.viewer.keepScreenOn
-//        updateStatusContainerVisibility(isConnected)
         autoReconnect(newState)
 
-//        if (isConnected)
-//            ViewerHelp().onConnected(this)
-
-        if (isConnected && !restoredFromBundle) {
-            incrementUseCount()
-//            restoreFrameState()
-        }
     }
 
-    private fun incrementUseCount() {
-        viewModel.profile.useCount += 1
-    }
-
-//    private fun updateStatusContainerVisibility(isConnected: Boolean) {
-//        binding.statusContainer.isVisible = true
-//        binding.statusContainer
-//                .animate()
-//                .alpha(if (isConnected) 0f else 1f)
-//                .withEndAction { binding.statusContainer.isVisible = !isConnected }
-//    }
-
-//    private fun restoreFrameState() {
-//        intent.extras?.let { extras ->
-//            BundleCompat.getParcelable(extras, FRAME_STATE_KEY, SavedFrameState::class.java)?.let {
-//                viewModel.setZoom(it.zoom)
-//                viewModel.panFrame(it.frameX, it.frameY)
-//            }
-//        }
-//    }
 
     private var autoReconnecting = false
     private fun autoReconnect(state: VncViewModel.State) {
@@ -269,7 +371,6 @@ class VncActivity : ComponentActivity() {
 
         // If disconnected when coming back from background, try to reconnect immediately
         if (wasConnectedWhenStopped && (SystemClock.uptimeMillis() - onStartTime) in 0..2000) {
-            Log.d(javaClass.simpleName, "Disconnected while in background, reconnecting ...")
             retryConnection(true)
         }
 

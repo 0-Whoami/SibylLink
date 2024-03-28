@@ -73,7 +73,7 @@ class Dispatcher(private val activity: VncActivity) {
     fun onTap1(p: PointF) =  relativeMode.doClick(PointerButton.Left, p)
     fun onTap2(p: PointF) = relativeMode.doClick(PointerButton.Right, p)
     fun onDoubleTap(p: PointF) = relativeMode.doDoubleClick(PointerButton.Left, p)
-    fun onLongPress(p: PointF) = relativeMode.doClick(PointerButton.Middle, p)
+    fun onLongPress(p: PointF) ={}/* relativeMode.doClick(PointerButton.Middle, p)*/
 
     fun onSwipe1(cp: PointF, dx: Float, dy: Float) = relativeMode.doMovePointer(cp, dx, dy)
     fun onSwipe2(sp: PointF, dx: Float, dy: Float) = relativeMode.doRemoteScroll(sp, dx, dy)
