@@ -193,7 +193,7 @@ class FrameState(
     fun pan(deltaX: Float, deltaY: Float) = withLock {
         frameX += deltaX
         frameY += deltaY
-        coerceValues()
+//        coerceValues()
     }
 
     /**

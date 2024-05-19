@@ -9,6 +9,7 @@
 package sibyllink.vnc.viewmodel
 
 import android.app.Application
+import android.graphics.Bitmap
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,12 +24,12 @@ import kotlinx.coroutines.launch
 import sibyllink.vnc.model.ServerProfile
 import sibyllink.vnc.ui.vnc.FrameState
 import sibyllink.vnc.ui.vnc.FrameView
-import sibyllink.vnc.util.LiveRequest
 import sibyllink.vnc.util.getClipboardText
 import sibyllink.vnc.util.setClipboardText
 import sibyllink.vnc.vnc.Messenger
 import sibyllink.vnc.vnc.UserCredential
 import sibyllink.vnc.vnc.VncClient
+import java.io.FileOutputStream
 import java.io.IOException
 import java.lang.ref.WeakReference
 
@@ -97,6 +98,11 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
             val State?.isDisconnected get() = (this == Disconnected)
         }
     }
+    fun saveBitmap(bitmap: Bitmap){
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, FileOutputStream(app.filesDir.absolutePath + "/${profile.id}.png"));
+    }
+    var screenShort by mutableStateOf(false)
+    fun takeSS(){screenShort=true}
 
     val client = VncClient(this)
 
@@ -107,15 +113,6 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
      * [state]               - More granular, used by observers & data binding
      */
     val state = MutableStateFlow(State.Created)
-
-    /**
-     * Reason for disconnecting.
-     */
-    var disconnectReason by mutableStateOf("Waiting For Connection")
-   /**
-     * Fired to unlock saved servers.
-     */
-    val serverUnlockRequest = LiveRequest<Any?, Boolean>(false, viewModelScope)
 
     /**
      * Holds a weak reference to [FrameView] instance.
@@ -168,7 +165,6 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
                 connect()
                 processMessages()
             }.onFailure {
-                disconnectReason=it.message?:"Unknown Error"
                 Log.e("ReceiverCoroutine", "Connection failed", it)
             }
 
@@ -181,11 +177,8 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
     }
 
     private fun preConnect() {
-        if (pref.server.lockSavedServer)
-            if (!serverUnlockRequest.requestResponse(null))
-                throw IOException("Could not unlock server")
 
-        client.configure(profile.viewOnly, profile.securityType, true  /* Hardcoded to true */,
+        client.configure(profile.viewOnly, profile.securityType, profile.useLocalCursor  /* Hardcoded to true */,
                          profile.imageQuality, profile.useRawEncoding)
 
         if (profile.useRepeater)

@@ -48,7 +48,6 @@ class FrameView(context: Context?, attrs: AttributeSet? = null) : GLSurfaceView(
 
     private lateinit var touchHandler: TouchHandler
     private lateinit var keyHandler: KeyHandler
-
     /**
      * Input connection used for intercepting key events
      */

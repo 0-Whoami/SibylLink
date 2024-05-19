@@ -12,6 +12,8 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.opengl.GLES20
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.KeyEvent
@@ -19,6 +21,15 @@ import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,13 +42,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.twotone.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.twotone.KeyboardTab
 import androidx.compose.material.icons.twotone.Close
+import androidx.compose.material.icons.twotone.Error
 import androidx.compose.material.icons.twotone.Keyboard
 import androidx.compose.material.icons.twotone.KeyboardArrowDown
 import androidx.compose.material.icons.twotone.KeyboardArrowUp
@@ -45,18 +56,20 @@ import androidx.compose.material.icons.twotone.KeyboardCommandKey
 import androidx.compose.material.icons.twotone.Upload
 import androidx.compose.material.icons.twotone.Window
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -67,21 +80,53 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
-import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.material.Icon
+import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import sibyllink.vnc.model.ServerProfile
+import sibyllink.vnc.ui.home.HomeActivity
 import sibyllink.vnc.viewmodel.VncViewModel
 import sibyllink.vnc.viewmodel.VncViewModel.State.Companion.isConnected
 import sibyllink.vnc.viewmodel.VncViewModel.State.Companion.isDisconnected
+import java.io.File
+import java.io.FileOutputStream
 import java.lang.ref.WeakReference
+import java.nio.IntBuffer
+
+@Composable
+fun Loading() {
+
+    val alpha by rememberInfiniteTransition(label = "").animateFloat(
+        initialValue = 1f, targetValue = 0.1f, animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 1000, delayMillis = 500
+            ), repeatMode = RepeatMode.Reverse
+        ), label = ""
+    )
+    Box(Modifier.fillMaxSize()) {
+        Canvas(
+            modifier = Modifier
+                .padding(10.dp)
+                .size(30.dp)
+        ) {
+            drawCircle(
+                color = Color.White,
+                alpha = alpha,
+                style = Stroke(width = 5f),
+                radius = size.minDimension / 2 * (1 - alpha)
+            )
+        }
+    }
+
+}
 
 /********** [VncActivity] startup helpers *********************************/
 
@@ -131,7 +176,6 @@ class VncActivity : ComponentActivity() {
             finish()
             return
         }
-
         viewModel.initConnection()
 
         //Main UI
@@ -139,40 +183,63 @@ class VncActivity : ComponentActivity() {
         frameView.initialize(this)
 
         setContent {
-            var showKeys by remember { mutableStateOf(false) }
-                Box(modifier = Modifier
-                    .fillMaxSize()
-                    .onGloballyPositioned {
-                        val width = it.size.width.toFloat()
-
-                        viewModel.frameState.setWindowSize(width, width)
-                        viewModel.frameState.setViewportSize(width, width)
-                    }, contentAlignment = Alignment.BottomCenter) {
-                    
-                AndroidView(factory = { frameView })
-                    
-                if (showKeys) ButtonArray()
-                }
-            if (showMenu)
-                Popup(
-                    properties = PopupProperties(),
-                    onDismissRequest = { showMenu = false },
-                    popupPositionProvider = PopupPosition()
+            if (viewModel.state.collectAsState().value.isConnected) {
+                var showKeys by remember { mutableStateOf(false) }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onGloballyPositioned {
+                            val width = it.size.width.toFloat()
+                            viewModel.frameState.setWindowSize(width, width)
+                            viewModel.frameState.setViewportSize(width, width)
+                        }, contentAlignment = Alignment.BottomCenter
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth(.5f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Buttons { showMenu = false;showKeyboard() }
-                        Buttons(text = "VirtualKeys", icon = Icons.TwoTone.KeyboardCommandKey) { showMenu = false;showKeys = !showKeys }
-                        Buttons(icon = Icons.TwoTone.Close, text = "Disconnect") { finish() }
+
+                    AndroidView(factory = { frameView })
+                    if (showKeys) ButtonArray()
+                }
+                AnimatedVisibility(showMenu, enter = slideInVertically(), exit = slideOutVertically()) {
+                    Popup(
+                        properties = PopupProperties(),
+                        onDismissRequest = { showMenu = false },
+                        popupPositionProvider = PopupPosition()
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(.5f), verticalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Buttons { showMenu = false;showKeyboard() }
+                            Buttons(text = "VirtualKeys", icon = Icons.TwoTone.KeyboardCommandKey) {
+                                showMenu = false;showKeys = !showKeys
+                            }
+                            Buttons(icon = Icons.TwoTone.Close, text = "Disconnect") {
+                                finish()
+                            }
+                        }
                     }
                 }
+            } else Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (viewModel.state.collectAsState().value == VncViewModel.State.Connecting) {
+                    Loading()
+                } else {
+                    Icon(
+                        imageVector = Icons.TwoTone.Error, contentDescription = null, tint = MaterialTheme.colors.error
+                    )
+                    Text(
+                        text = "Failed to connect!\nEnsure that you have entered the correct credentials and try connecting again.",
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+            }
         }
 
         viewModel.frameViewRef = WeakReference(frameView)
-        setupServerUnlock()
-
-        //Observers
-//        viewModel.loginInfoRequest.observe(this) { showLoginDialog() }
-        lifecycleScope.launchWhenResumed { viewModel.state.collect{ onClientStateChanged(it) } }
 
         savedInstanceState?.let {
             restoredFromBundle = true
@@ -198,43 +265,40 @@ class VncActivity : ComponentActivity() {
 
     @Composable
     fun IconButton(enable: Boolean = false, icon: ImageVector, onClick: () -> Unit) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier
-                .padding(5.dp)
-                .background(if (enable) Color(0xf58692fc) else Color.White.copy(alpha = .8f), CircleShape)
-                .padding(5.dp)
-                .aspectRatio(1f)
-                .clickable { onClick() },
-            tint = if (enable) Color.White else Color.Black
-        )
+        Icon(imageVector = icon,
+             contentDescription = null,
+             modifier = Modifier
+                 .padding(5.dp)
+                 .background(if (enable) Color(0xf58692fc) else Color.White.copy(alpha = .8f), CircleShape)
+                 .padding(5.dp)
+                 .aspectRatio(1f)
+                 .clickable { onClick() }
+                 .rotate(-90f),
+             tint = if (enable) Color.White else Color.Black)
     }
 
     @Composable
     fun TextButton(enable: Boolean = false, text: String, onClick: () -> Unit) {
-        Text(
-            text = text,
-            modifier = Modifier
-                .aspectRatio(1f)
-                .padding(5.dp)
-                .background(if (enable) Color(0xf58692fc) else Color.White.copy(alpha = .8f), CircleShape)
-                .padding(5.dp)
-                .wrapContentHeight()
-                .clickable { onClick() },
-            color = if (enable) Color.White else Color.Black,
-            fontSize = 8.sp,
-            textAlign = TextAlign.Center,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1
-        )
+        Text(text = text,
+             modifier = Modifier
+                 .aspectRatio(1f)
+                 .padding(5.dp)
+                 .background(if (enable) Color(0xf58692fc) else Color.White.copy(alpha = .8f), CircleShape)
+                 .padding(5.dp)
+                 .wrapContentHeight()
+                 .clickable { onClick() }
+                 .rotate(-90f),
+             color = if (enable) Color.White else Color.Black,
+             fontSize = 8.sp,
+             textAlign = TextAlign.Center,
+             fontWeight = FontWeight.Bold,
+             maxLines = 1)
 
     }
 
-    @Preview
     @Composable
     fun ButtonArray() {
-        LazyRow(modifier = Modifier.size(120.dp, 40.dp)) {
+        ScalingLazyColumn(modifier = Modifier.rotate(90f), horizontalAlignment = Alignment.Start) {
             //meta keys
             item {
                 var enable by remember { mutableStateOf(false) }; IconButton(
@@ -284,8 +348,7 @@ class VncActivity : ComponentActivity() {
     @Deprecated("Deprecated in Java")
     @SuppressLint("MissingSuperCall")
     override fun onBackPressed() {
-        if (viewModel.state.value.isDisconnected)
-            finish()
+        if (viewModel.state.value.isDisconnected) finish()
         showMenu = !showMenu
     }
 
@@ -302,10 +365,51 @@ class VncActivity : ComponentActivity() {
         if (wasConnectedWhenStopped) viewModel.refreshFrameBuffer()
     }
 
+    private fun captureGLSurfaceView(): Bitmap {
+        val w = viewModel.frameState.getSnapshot().vpWidth.toInt()
+        val h = viewModel.frameState.getSnapshot().vpHeight.toInt()
+
+        val bitmapBuffer = IntArray(w * h)
+        val bitmapSource = IntArray(w * h)
+        val intBuffer = IntBuffer.wrap(bitmapBuffer)
+        intBuffer.position(0)
+
+        GLES20.glReadPixels(0, 0, w, h, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, intBuffer)
+        var offset1: Int
+        var offset2: Int
+        for (i in 0 until h) {
+            offset1 = i * w
+            offset2 = (h - i - 1) * w
+            for (j in 0 until w) {
+                val texturePixel = bitmapBuffer[offset1 + j]
+                val blue = (texturePixel shr 16) and 0xff
+                val red = (texturePixel shl 16) and 0x00ff0000
+                val pixel = (texturePixel and 0xff00ff00.toInt()) or red or blue
+                bitmapSource[offset2 + j] = pixel
+            }
+        }
+        return Bitmap.createBitmap(bitmapSource, w, h, Bitmap.Config.ARGB_8888)
+    }
+
+
+    private fun saveBitmap(bitmap: Bitmap) {
+        bitmap.compress(
+            Bitmap.CompressFormat.PNG, 100, FileOutputStream(File(filesDir, "/${viewModel.profile.id}.png"))
+        )
+    }
+
+    override fun onPause() {
+        super.onPause()
+        frameView.queueEvent {
+            saveBitmap(captureGLSurfaceView())
+        }
+    }
+
     override fun onStop() {
         super.onStop()
         frameView.onPause()
         wasConnectedWhenStopped = viewModel.state.value.isConnected
+        startActivity(Intent(this, HomeActivity::class.java))
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -340,27 +444,11 @@ class VncActivity : ComponentActivity() {
         }
     }
 
-    private fun setupServerUnlock() {
-
-        viewModel.serverUnlockRequest.observe(this) {
-            viewModel.serverUnlockRequest.offerResponse(true)
-        }
-    }
-
     fun showKeyboard() {
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
         frameView.requestFocus()
         imm.showSoftInput(frameView, 0)
-
-    }
-
-    private fun onClientStateChanged(newState: VncViewModel.State) {
-        val isConnected = newState.isConnected
-
-        frameView.isVisible = isConnected
-        frameView.keepScreenOn = isConnected && viewModel.pref.viewer.keepScreenOn
-        autoReconnect(newState)
 
     }
 

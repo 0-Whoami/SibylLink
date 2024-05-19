@@ -18,6 +18,7 @@ import sibyllink.vnc.viewmodel.VncViewModel
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
+
 /**
  * Frame renderer.
  */
@@ -27,7 +28,6 @@ class Renderer(private val viewModel: VncViewModel) : GLSurfaceView.Renderer {
     private val hideCursor = viewModel.pref.input.hideRemoteCursor
     private lateinit var program: FrameProgram
     private lateinit var frame: Frame
-
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         glClearColor(0f, 0f, 0f, 1f)
 

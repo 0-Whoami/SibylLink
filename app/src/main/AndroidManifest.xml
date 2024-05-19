@@ -3,12 +3,15 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+
     <uses-feature
         android:name="android.hardware.type.watch"
         android:required="true" />
+
     <application
         android:label="Sibyllink"
         android:supportsRtl="true">
+
         <uses-library
             android:name="com.google.android.wearable"
             android:required="true" />
@@ -16,8 +19,12 @@
         <meta-data
             android:name="com.google.android.wearable.standalone"
             android:value="true" />
+
         <activity
             android:name=".ui.home.HomeActivity"
+            android:taskAffinity="" />
+        <activity
+            android:name=".ui.home.Editor"
             android:taskAffinity="" />
 
         <activity-alias
@@ -26,6 +33,7 @@
             android:targetActivity=".ui.home.HomeActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
@@ -34,8 +42,7 @@
             android:name=".ui.vnc.VncActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:taskAffinity=""
-            android:theme="@style/vnc"/>
-
+            android:theme="@style/vnc" />
     </application>
 
 </manifest>
