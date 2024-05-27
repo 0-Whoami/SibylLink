@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,9 +27,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.twotone.Add
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.twotone.Delete
 import androidx.compose.material.icons.twotone.Edit
+import androidx.compose.material.icons.twotone.Settings
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,10 +39,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.ExperimentalWearFoundationApi
 import androidx.wear.compose.foundation.RevealValue
@@ -96,7 +97,7 @@ class HomeActivity : ComponentActivity() {
                     .rotaryScrollable(
                         RotaryScrollableDefaults.behavior(state), rememberActiveFocusRequester()
                     )
-                    .background(Color.Black), horizontalAlignment = Alignment.CenterHorizontally
+                    .background(Color(0xff0d0d0d)), horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 item { Text("Servers") }
                 items(listOfServers) {
@@ -125,20 +126,21 @@ class HomeActivity : ComponentActivity() {
                             )
                         }
                     }, secondaryAction = {
-                        Icon(imageVector = Icons.TwoTone.Edit,
-                             contentDescription = null,
-                             modifier = Modifier.clickable {
-                                 startActivity(
-                                     Intent(this@HomeActivity, Editor::class.java).putExtra(
-                                         "profile", it
-                                     )
-                                 )
-                             })
+                        Icon(
+                            imageVector = Icons.TwoTone.Edit,
+                            contentDescription = null,
+                            modifier = Modifier.clickable {
+                                startActivity(
+                                    Intent(this@HomeActivity, Editor::class.java).putExtra(
+                                        "profile", it
+                                    )
+                                )
+                            })
                     }) {
                         Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(25))
-                                .background(Color(0xff242124))
+                                .background(Color(0x5f242124))
                                 .fillMaxWidth()
                                 .clickable {
                                     startNewConnection(it)
@@ -147,26 +149,38 @@ class HomeActivity : ComponentActivity() {
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Image(
-                                bitmap = image?: ImageBitmap.imageResource(R.drawable.image),
+                            if (image == null) Image(
+                                imageVector = ImageVector.vectorResource(id = R.drawable.ic_launcher_foreground),
                                 contentDescription = null,
-                                modifier = Modifier.size(75.dp),
-                                contentScale = ContentScale.Crop
+                                modifier = Modifier.size(75.dp)
+                            )
+                            else Image(
+                                bitmap = image, contentDescription = null, modifier = Modifier.size(75.dp)
                             )
                             Text(text = it.username)
                         }
                     }
                 }
                 item {
-                    Icon(imageVector = Icons.TwoTone.Add,
-                         contentDescription = null,
-                         tint = Color.Black,
-                         modifier = Modifier
-                             .clip(RoundedCornerShape(50))
-                             .clickable { startActivity(Intent(this@HomeActivity, Editor::class.java)) }
-                             .background(Color.White)
-                             .padding(10.dp)
-                             .fillMaxWidth(if (listOfServers.isEmpty()) 1f else 0.5f))
+                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Icon(imageVector = Icons.Rounded.Add,
+                             contentDescription = null,
+                             modifier = Modifier
+                                 .clip(RoundedCornerShape(25))
+                                 .clickable { startActivity(Intent(this@HomeActivity, Editor::class.java)) }
+                                 .background(Color(0x5f242124))
+                                 .padding(10.dp)
+                                 .weight(1f))
+                        Icon(
+                            imageVector = Icons.TwoTone.Settings,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(25))
+                                .background(Color(0x5f242124))
+                                .padding(10.dp)
+                        )
+
+                    }
                 }
             }
 

@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -272,8 +273,7 @@ class VncActivity : ComponentActivity() {
                  .background(if (enable) Color(0xf58692fc) else Color.White.copy(alpha = .8f), CircleShape)
                  .padding(5.dp)
                  .aspectRatio(1f)
-                 .clickable { onClick() }
-                 .rotate(-90f),
+                 .clickable { onClick() },
              tint = if (enable) Color.White else Color.Black)
     }
 
@@ -286,8 +286,7 @@ class VncActivity : ComponentActivity() {
                  .background(if (enable) Color(0xf58692fc) else Color.White.copy(alpha = .8f), CircleShape)
                  .padding(5.dp)
                  .wrapContentHeight()
-                 .clickable { onClick() }
-                 .rotate(-90f),
+                 .clickable { onClick() },
              color = if (enable) Color.White else Color.Black,
              fontSize = 8.sp,
              textAlign = TextAlign.Center,
@@ -298,7 +297,7 @@ class VncActivity : ComponentActivity() {
 
     @Composable
     fun ButtonArray() {
-        ScalingLazyColumn(modifier = Modifier.rotate(90f), horizontalAlignment = Alignment.Start) {
+        ScalingLazyColumn(modifier = Modifier.width(70.dp), horizontalAlignment = Alignment.Start) {
             //meta keys
             item {
                 var enable by remember { mutableStateOf(false) }; IconButton(

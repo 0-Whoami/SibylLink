@@ -9,8 +9,10 @@
         android:required="true" />
 
     <application
+        android:hardwareAccelerated="true"
+        android:icon="@mipmap/ic_launcher"
         android:label="Sibyllink"
-        android:supportsRtl="true">
+        android:theme="@android:style/Theme.DeviceDefault">
 
         <uses-library
             android:name="com.google.android.wearable"
@@ -22,21 +24,17 @@
 
         <activity
             android:name=".ui.home.HomeActivity"
-            android:taskAffinity="" />
-        <activity
-            android:name=".ui.home.Editor"
-            android:taskAffinity="" />
-
-        <activity-alias
-            android:name=".StartupActivity"
             android:exported="true"
-            android:targetActivity=".ui.home.HomeActivity">
+            android:taskAffinity="">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
+        <activity
+            android:name=".ui.home.Editor"
+            android:taskAffinity="" />
 
         <activity
             android:name=".ui.vnc.VncActivity"

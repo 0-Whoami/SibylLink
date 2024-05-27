@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ImportExport
+import androidx.compose.material.icons.rounded.Password
 import androidx.compose.material.icons.twotone.Bookmark
 import androidx.compose.material.icons.twotone.DesktopWindows
 import androidx.compose.material.icons.twotone.Done
@@ -34,9 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -59,7 +61,9 @@ class Editor : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val serverProfile = (intent.getSerializableExtra("profile") as ServerProfile?) ?: ServerProfile(-1)
         val database = Database(this)
-        val  bitmap= try{BitmapFactory.decodeFile(File(filesDir, "${serverProfile.id}.png").absolutePath).asImageBitmap()} catch (e:Exception) {
+        val bitmap = try {
+            BitmapFactory.decodeFile(File(filesDir, "${serverProfile.id}.png").absolutePath).asImageBitmap()
+        } catch (e: Exception) {
             null
         }
         setContent {
@@ -78,12 +82,20 @@ class Editor : ComponentActivity() {
                     )
             ) {
                 Spacer(modifier = Modifier.height(50.dp))
-                Image(
-                    bitmap = bitmap?:ImageBitmap.imageResource(R.drawable.image),
+                if (bitmap == null) Image(
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_launcher_foreground),
                     contentDescription = null,
                     modifier = Modifier
                         .clip(CircleShape)
-                        .background(color = Color.White)
+                        .background(Color(0xff00EAFF))
+                        .zIndex(1f)
+                        .size(50.dp)
+                )
+                else Image(
+                    bitmap = bitmap,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .clip(CircleShape)
                         .zIndex(1f)
                         .size(50.dp)
                 )
@@ -92,44 +104,44 @@ class Editor : ComponentActivity() {
                         .fillMaxWidth()
                         .offset(y = (-15).dp)
                         .padding(10.dp)
-                        .background(Color(0xff242124), RoundedCornerShape(25.dp))
+                        .background(Color(0x5f242124), RoundedCornerShape(25.dp))
                         .padding(5.dp)
                 ) {
-                    TextField(
-                        icon = Icons.TwoTone.Bookmark,
-                        text = name,
-                        placeholder = "UserName",
-                        onTextChange = { name = it })
+                    TextField(icon = Icons.TwoTone.Bookmark,
+                              text = name,
+                              placeholder = "UserName",
+                              onTextChange = { name = it })
+
+                    TextField(icon = Icons.TwoTone.DesktopWindows,
+                              text = host,
+                              placeholder = "Host",
+                              onTextChange = { host = it })
 
                     TextField(
-                        icon = Icons.TwoTone.DesktopWindows,
-                        text = host,
-                        placeholder = "Host",
-                        onTextChange = { host = it })
-
-                    TextField(
-                        icon = Icons.TwoTone.ImportExport,
+                        icon = Icons.Rounded.ImportExport,
                         text = port,
                         placeholder = "Port",
                         onTextChange = { port = it },
                         keyboardType = KeyboardType.Number
                     )
 
-                    TextField(
-                        icon = Icons.TwoTone.Password,
-                        text = password,
-                        placeholder = "Password",
-                        onTextChange = { password = it })
+                    TextField(icon = Icons.Rounded.Password,
+                              text = password,
+                              placeholder = "Password",
+                              onTextChange = { password = it })
 
-                    Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(5.dp)
-                        .clickable {
-                            if (name.isBlank()) return@clickable
-                            if (serverProfile.id == -1) database.addServerProfile(host, port.toInt(), name, password)
-                            else database.updateServerProfile(serverProfile.id, host, port.toInt(), name, password)
-                            finish()
-                        },
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(5.dp)
+                            .clickable {
+                                if (name.isBlank()) return@clickable
+                                if (serverProfile.id == -1) database.addServerProfile(
+                                    host, port.toInt(), name, password
+                                )
+                                else database.updateServerProfile(serverProfile.id, host, port.toInt(), name, password)
+                                finish()
+                            },
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
