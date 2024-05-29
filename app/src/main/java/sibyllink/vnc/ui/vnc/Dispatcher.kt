@@ -60,7 +60,7 @@ class Dispatcher(private val viewModel: VncViewModel) {
     fun onSwipe2(dx: Float, dy: Float) = doRemoteScroll(dx, dy)
     fun onDoubleTapSwipe(dx: Float, dy: Float) = doRemoteDrag(dx, dy)
 
-    fun onRotaryScroll(dy: Float) = doRemoteScroll(dy, dy)
+    fun onRotaryScroll(dy: Float) = doRemoteScroll(0f, dy)
 
     fun onXKey(keySym: Int, xtCode: Int, isDown: Boolean) = messenger.sendKey(keySym, xtCode, isDown)
 

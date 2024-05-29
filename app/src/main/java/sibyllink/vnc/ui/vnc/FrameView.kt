@@ -1,4 +1,3 @@
-
 package sibyllink.vnc.ui.vnc
 
 import android.annotation.SuppressLint
@@ -59,8 +58,6 @@ class FrameView(context: Context?, attrs: AttributeSet? = null) : GLSurfaceView(
      */
     fun initialize(activity: VncActivity) {
         val viewModel = activity.viewModel
-        isFocusable = true
-        isFocusableInTouchMode = true
         touchHandler = activity.touchHandler
         keyHandler = activity.keyHandler
 
@@ -68,6 +65,14 @@ class FrameView(context: Context?, attrs: AttributeSet? = null) : GLSurfaceView(
         setRenderer(Renderer(viewModel))
         renderMode = RENDERMODE_WHEN_DIRTY
 
+        requestFocus()
+
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        touchHandler.viewModel.frameState.setWindowSize(w.toFloat(), h.toFloat())
+        touchHandler.viewModel.frameState.setViewportSize(w.toFloat(), h.toFloat())
+        super.onSizeChanged(w, h, oldw, oldh)
     }
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {

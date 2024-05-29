@@ -11,22 +11,17 @@ import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,16 +35,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.twotone.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.twotone.KeyboardTab
-import androidx.compose.material.icons.twotone.Close
-import androidx.compose.material.icons.twotone.Error
 import androidx.compose.material.icons.twotone.Keyboard
 import androidx.compose.material.icons.twotone.KeyboardArrowDown
 import androidx.compose.material.icons.twotone.KeyboardArrowUp
-import androidx.compose.material.icons.twotone.KeyboardCommandKey
 import androidx.compose.material.icons.twotone.Upload
 import androidx.compose.material.icons.twotone.Window
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,7 +50,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -68,10 +58,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -79,10 +66,10 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.material.Icon
-import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import sibyllink.vnc.R
 import sibyllink.vnc.model.ServerProfile
 import sibyllink.vnc.viewmodel.VncViewModel
 import sibyllink.vnc.viewmodel.VncViewModel.State.Companion.isConnected
@@ -168,67 +155,65 @@ class VncActivity : ComponentActivity() {
             return
         }
         viewModel.initConnection()
-
+        setContentView(R.layout.vnc_activity)
         //Main UI
-        frameView = FrameView(this)
+        frameView = findViewById(R.id.frame_view)
         frameView.initialize(this)
-
-        setContent {
-            if (viewModel.state.collectAsState().value.isConnected) {
-                var showKeys by remember { mutableStateOf(false) }
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .onGloballyPositioned {
-                            val width = it.size.width.toFloat()
-                            viewModel.frameState.setWindowSize(width, width)
-                            viewModel.frameState.setViewportSize(width, width)
-                        }, contentAlignment = Alignment.BottomCenter
-                ) {
-
-                    AndroidView(factory = { frameView })
-                    if (showKeys) ButtonArray()
-                }
-                AnimatedVisibility(showMenu, enter = slideInVertically(), exit = slideOutVertically()) {
-                    Popup(
-                        properties = PopupProperties(),
-                        onDismissRequest = { showMenu = false },
-                        popupPositionProvider = PopupPosition()
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(.5f), verticalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Buttons { showMenu = false;showKeyboard() }
-                            Buttons(text = "VirtualKeys", icon = Icons.TwoTone.KeyboardCommandKey) {
-                                showMenu = false;showKeys = !showKeys
-                            }
-                            Buttons(icon = Icons.TwoTone.Close, text = "Disconnect") {
-                                finish()
-                            }
-                        }
-                    }
-                }
-            } else Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (viewModel.state.collectAsState().value == VncViewModel.State.Connecting) {
-                    Loading()
-                } else {
-                    Icon(
-                        imageVector = Icons.TwoTone.Error, contentDescription = null, tint = MaterialTheme.colors.error
-                    )
-                    Text(
-                        text = "Failed to connect!\nEnsure that you have entered the correct credentials and try connecting again.",
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-            }
-        }
+//          setContent {
+//            if (viewModel.state.collectAsState().value.isConnected) {
+//                var showKeys by remember { mutableStateOf(false) }
+//                Box(
+//                    modifier = Modifier
+//                        .fillMaxSize()
+//                        .onGloballyPositioned {
+//                            val width = it.size.width.toFloat()
+//
+//                        }, contentAlignment = Alignment.BottomCenter
+//                ) {
+//
+//                    AndroidView(factory = { frameView })
+//                    if (showKeys) ButtonArray()
+//                }
+//                AnimatedVisibility(showMenu, enter = slideInVertically(), exit = slideOutVertically()) {
+//                    Popup(
+//                        properties = PopupProperties(),
+//                        onDismissRequest = { showMenu = false },
+//                        popupPositionProvider = PopupPosition()
+//                    ) {
+//                        Column(
+//                            modifier = Modifier.fillMaxWidth(.5f), verticalArrangement = Arrangement.spacedBy(5.dp)
+//                        ) {
+//                            Buttons { showMenu = false;showKeyboard() }
+//                            Buttons(text = "VirtualKeys", icon = Icons.TwoTone.KeyboardCommandKey) {
+//                                showMenu = false;showKeys = !showKeys
+//                            }
+//                            Buttons(icon = Icons.TwoTone.Close, text = "Disconnect") {
+//                                finish()
+//                            }
+//                        }
+//                    }
+//                }
+//            } else Column(
+//                modifier = Modifier
+//                    .fillMaxSize()
+//                    .background(Color.Black),
+//                verticalArrangement = Arrangement.Center,
+//                horizontalAlignment = Alignment.CenterHorizontally
+//            ) {
+//                if (viewModel.state.collectAsState().value == VncViewModel.State.Connecting) {
+//                    Loading()
+//                } else {
+//                    Icon(
+//                        imageVector = Icons.TwoTone.Error, contentDescription = null, tint = MaterialTheme.colors.error
+//                    )
+//                    Text(
+//                        text = "Failed to connect!\nEnsure that you have entered the correct credentials and try connecting again.",
+//                        textAlign = TextAlign.Center
+//                    )
+//                }
+//
+//            }
+//        }
 
         viewModel.frameViewRef = WeakReference(frameView)
 

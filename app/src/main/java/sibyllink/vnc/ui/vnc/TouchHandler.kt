@@ -20,7 +20,7 @@ import kotlin.math.max
 /**
  * Handler for touch events. It detects various gestures and notifies [dispatcher].
  */
-class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: Dispatcher) :
+class TouchHandler(val viewModel: VncViewModel, private val dispatcher: Dispatcher) :
     ScaleGestureDetector.OnScaleGestureListener, SimpleOnGestureListener() {
 
     //Extension to easily access touch position
@@ -37,7 +37,7 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
 
     fun onGenericMotionEvent(ev: MotionEvent): Boolean {
         if (ev.action == MotionEvent.ACTION_SCROLL && ev.isFromSource(InputDeviceCompat.SOURCE_ROTARY_ENCODER)) {
-            val delta = -ev.getAxisValue(MotionEventCompat.AXIS_SCROLL) * 20
+            val delta = ev.getAxisValue(MotionEventCompat.AXIS_SCROLL) * 20
             dispatcher.onRotaryScroll(delta)
         }
         return true
