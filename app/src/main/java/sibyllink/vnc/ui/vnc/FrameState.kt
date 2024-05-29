@@ -1,17 +1,7 @@
-/*
- * Copyright (c) 2020  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
-
 package sibyllink.vnc.ui.vnc
 
 import android.graphics.PointF
-import android.graphics.RectF
 import sibyllink.vnc.ui.vnc.FrameState.Snapshot
-import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
@@ -31,7 +21,7 @@ import kotlin.math.min
  *
  * Viewport: This is the area of window where frame is rendered. It is denoted by [FrameView].
  *
- * Safe area: Area inside viewport which is safe for interaction with frame, maintained in [safeArea].
+ * Safe area: Area inside viewport which is safe for interaction with frame, maintained in safeArea.
  *
  *     Window denotes 'total' area available to our activity, viewport denotes 'visible to user'
  *     area, and safe area denotes 'able to click' area. Most of the time all three will be equal,
@@ -52,7 +42,6 @@ import kotlin.math.min
  *     Safe area is used to coerce frame position so that user can pan every part of frame inside
  *     safe area to interact with it.
  *
- * See [LayoutManager] for more information about these values.
  *
  * State & Coordinates
  * ===================
@@ -103,45 +92,44 @@ import kotlin.math.min
  * Render thread uses [getSnapshot] to retrieve a consistent state to render the frame.
  */
 class FrameState(
-        private val minZoomScale: Float = 0.5F,
-        private val maxZoomScale: Float = 6F
+    private val minZoomScale: Float = 1F, private val maxZoomScale: Float = 6F
 ) {
 
     //Frame position, relative to top-left corner (0,0)
-    var frameX = 0F; private set
-    var frameY = 0F; private set
+    var frameX = 0F
+    var frameY = 0F
 
     //VNC framebuffer size
-    var fbWidth = 0F; private set
-    var fbHeight = 0F; private set
+    var fbWidth = 0F
+    var fbHeight = 0F
 
     //Viewport/FrameView size
-    var vpWidth = 0F; private set
-    var vpHeight = 0F; private set
+    var vpWidth = 0F
+    var vpHeight = 0F
 
     //Size of activity window
-    var windowWidth = 0F; private set
-    var windowHeight = 0F; private set
+    var windowWidth = 0F
+    var windowHeight = 0F
 
 
     //Scaling
-    var zoomScale = 1F; private set
+    private var zoomScale = 1F
 
-    private var baseScale = 1F;
+    private var baseScale = 1F
 
     val scale get() = baseScale * zoomScale
 
     /**
      * Immutable wrapper for frame state
      */
-    data class Snapshot(
-            val frameX: Float,
-            val frameY: Float,
-            val fbWidth: Float,
-            val fbHeight: Float,
-            val vpWidth: Float,
-            val vpHeight: Float,
-            val scale: Float
+    class Snapshot(
+        val frameX: Float,
+        val frameY: Float,
+        val fbWidth: Float,
+        val fbHeight: Float,
+        val vpWidth: Float,
+        val vpHeight: Float,
+        val scale: Float
     )
 
     private val lock = Any()
@@ -176,52 +164,16 @@ class FrameState(
         val oldScale = zoomScale
         val newScale = zoomScale * scaleFactor
 
-        zoomScale = snapZoom(oldScale, newScale)
-        coerceValues()
+        zoomScale = newScale.coerceIn(minZoomScale, maxZoomScale)
 
         return zoomScale / oldScale //Applied scale factor
     }
-
-    fun setZoom(zoom1: Float) = withLock {
-        zoomScale = zoom1
-        coerceValues()
-    }
-
     /**
      * Shift frame by given delta.
      */
     fun pan(deltaX: Float, deltaY: Float) = withLock {
         frameX += deltaX
         frameY += deltaY
-//        coerceValues()
-    }
-
-    /**
-     * Move frame to given position.
-     */
-    fun moveTo(x: Float, y: Float) = withLock {
-        frameX = x
-        frameY = y
-        coerceValues()
-    }
-
-    /**
-     * Checks if given point is inside of framebuffer.
-     */
-    fun isValidFbPoint(x: Float, y: Float) = (x >= 0F && x < fbWidth) && (y >= 0F && y < fbHeight)
-
-    /**
-     * Converts given viewport point to corresponding framebuffer point.
-     * Returns null if given point lies outside of framebuffer.
-     */
-    fun toFb(vpPoint: PointF): PointF? {
-        val fbX = (vpPoint.x - frameX) / scale
-        val fbY = (vpPoint.y - frameY) / scale
-
-        if (isValidFbPoint(fbX, fbY))
-            return PointF(fbX, fbY)
-        else
-            return null
     }
 
     /**
@@ -235,21 +187,19 @@ class FrameState(
      * Returns immutable & consistent snapshot of frame state.
      */
     fun getSnapshot(): Snapshot = withLock {
-        return Snapshot(frameX = frameX, frameY = frameY,
-                        fbWidth = fbWidth, fbHeight = fbHeight,
-                        vpWidth = vpWidth, vpHeight = vpHeight, scale = scale)
-    }
-
-    /**
-     * Signaled when gesture ends
-     */
-    fun onGestureStop() {
-        resetSnapState()
+        return Snapshot(
+            frameX = frameX,
+            frameY = frameY,
+            fbWidth = fbWidth,
+            fbHeight = fbHeight,
+            vpWidth = vpWidth,
+            vpHeight = vpHeight,
+            scale = scale
+        )
     }
 
     private fun calculateBaseScale() {
-        if (fbHeight == 0F || fbWidth == 0F || windowHeight == 0F)
-            return  //Not enough info yet
+        if (fbHeight == 0F || fbWidth == 0F || windowHeight == 0F) return  //Not enough info yet
 
         val s1 = max(windowWidth, windowHeight) / max(fbWidth, fbHeight)
         val s2 = min(windowWidth, windowHeight) / min(fbWidth, fbHeight)
@@ -263,8 +213,8 @@ class FrameState(
     private fun coerceValues() {
         zoomScale = zoomScale.coerceIn(minZoomScale, maxZoomScale)
 
-        frameX = coercePosition(frameX,  vpWidth, fbWidth)
-        frameY = coercePosition(frameY,  vpHeight, fbHeight)
+        frameX = coercePosition(frameX, vpWidth, fbWidth)
+        frameY = coercePosition(frameY, vpHeight, fbHeight)
     }
 
     /**
@@ -272,55 +222,9 @@ class FrameState(
      */
     private fun coercePosition(current: Float, safeMax: Float, fb: Float): Float {
         val scaledFb = (fb * scale)
-        val diff = safeMax  - scaledFb
+        val diff = safeMax - scaledFb
 
         return if (diff >= 0) diff / 2       //Frame will be smaller than safe area, so center it
-        else current.coerceIn(diff , 0f) //otherwise, make sure safe area is completely filled.
-    }
-
-
-    /**
-     * Zoom scale snapping: It temporarily stops the scale at 100% when user is zooming.
-     * This way user don't have to reset zoom via "Reset zoom" button in toolbar.
-     */
-    private enum class Snap { None, Up, Down }
-
-    private var snapMode = Snap.None
-    private val snapLimit = 0.3f  // ±30% zoom
-    private var snapDelta = 0f
-
-    private fun snapZoom(oldZoom: Float, newZoom: Float): Float {
-        val deltaToOne = abs(newZoom - 1)
-        var result = newZoom
-
-        if (snapMode == Snap.Up) {
-            if (newZoom < 1) {                // Until snap limit is reached, snap up zoom to 1.0
-                snapDelta += deltaToOne
-                if (snapDelta < snapLimit)
-                    result = 1f
-            } else                            // Not crossed below 1.0 yet
-                snapDelta = 0f
-        }
-
-        if (snapMode == Snap.Down) {
-            if (newZoom > 1) {                // Until snap limit is reached, snap down zoom to 1.0
-                snapDelta += deltaToOne
-                if (snapDelta < snapLimit)
-                    result = 1f
-            } else                            // Not crossed above 1.0 yet
-                snapDelta = 0f
-        }
-
-        if (oldZoom > 1 && newZoom < oldZoom) // Greater than 1 but decreasing, so snap when going below 1
-            snapMode = Snap.Up
-        if (oldZoom < 1 && newZoom > oldZoom) // Lower than 1 but increasing, so snap when going above 1
-            snapMode = Snap.Down
-
-        return result
-    }
-
-    private fun resetSnapState() {
-        snapMode = Snap.None
-        snapDelta = 0f
+        else current.coerceIn(diff, 0f) //otherwise, make sure safe area is completely filled.
     }
 }

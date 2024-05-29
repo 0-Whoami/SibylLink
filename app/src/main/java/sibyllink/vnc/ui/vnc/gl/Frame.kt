@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2020  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
 
 package sibyllink.vnc.ui.vnc.gl
 
@@ -32,7 +25,7 @@ import java.nio.FloatBuffer
 class Frame {
 
     companion object {
-        const val FLOAT_SIZE = 4
+        private const val FLOAT_SIZE = 4
         const val TRIANGLE_COMPONENT = 2    //[x,y]
         const val TEXTURE_COMPONENT = 2     //[x,y]
         const val STRIDE = (TEXTURE_COMPONENT + TEXTURE_COMPONENT) * FLOAT_SIZE

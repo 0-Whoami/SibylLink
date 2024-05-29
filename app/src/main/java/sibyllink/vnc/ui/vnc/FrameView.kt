@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2020  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
 
 package sibyllink.vnc.ui.vnc
 
@@ -15,7 +8,6 @@ import android.text.InputType
 import android.util.AttributeSet
 import android.view.KeyEvent
 import android.view.MotionEvent
-import android.view.PointerIcon
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 import sibyllink.vnc.ui.vnc.gl.Renderer
@@ -48,6 +40,7 @@ class FrameView(context: Context?, attrs: AttributeSet? = null) : GLSurfaceView(
 
     private lateinit var touchHandler: TouchHandler
     private lateinit var keyHandler: KeyHandler
+
     /**
      * Input connection used for intercepting key events
      */
@@ -66,8 +59,8 @@ class FrameView(context: Context?, attrs: AttributeSet? = null) : GLSurfaceView(
      */
     fun initialize(activity: VncActivity) {
         val viewModel = activity.viewModel
-        isFocusable=true
-        isFocusableInTouchMode=true
+        isFocusable = true
+        isFocusableInTouchMode = true
         touchHandler = activity.touchHandler
         keyHandler = activity.keyHandler
 
@@ -75,14 +68,10 @@ class FrameView(context: Context?, attrs: AttributeSet? = null) : GLSurfaceView(
         setRenderer(Renderer(viewModel))
         renderMode = RENDERMODE_WHEN_DIRTY
 
-        // Hide local cursor if requested and supported
-        if (viewModel.pref.input.hideLocalCursor)
-            pointerIcon = PointerIcon.getSystemIcon(context, PointerIcon.TYPE_NULL)
     }
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
-        outAttrs.inputType =
-            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+        outAttrs.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
         return InputConnection()
     }
 

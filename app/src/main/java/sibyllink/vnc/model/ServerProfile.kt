@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2020  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
 
 package sibyllink.vnc.model
 
@@ -45,13 +38,6 @@ class ServerProfile(
      * 0 enables all supported types.
      */
     var securityType: Int = 0,
-
-    /**
-     * Transport channel to be used for communicating with the server.
-     * e.g. TCP, SSH Tunnel
-     */
-    var channelType: Int = CHANNEL_TCP,
-
     /**
      * Specifies the image quality of the frames.
      * This mainly affects the compression level used by some encodings.
@@ -85,12 +71,6 @@ class ServerProfile(
     var useLocalCursor: Boolean = false,
 
     /**
-     * Composite field for various flags.
-     * This is accessed via individual members like [fLegacyKeySym].
-     */
-    var flags: Long = FLAG_LEGACY_KEYSYM,
-
-    /**
      * Whether UltraVNC Repeater is used for connections.
      * When repeater is used, [host] & [port] identifies the repeater.
      */
@@ -107,43 +87,4 @@ class ServerProfile(
      */
     var resizeRemoteDesktop: Boolean = false
 
-) : Serializable {
-
-    companion object {
-        // Channel types (from RFC 7869)
-        const val CHANNEL_TCP = 1
-
-
-        // Flag masks
-        private const val FLAG_LEGACY_KEYSYM = 0x01L
-        private const val FLAG_BUTTON_UP_DELAY = 0x02L
-        private const val FLAG_ZOOM_LOCKED = 0x04L
-    }
-
-    /**
-     * Delegated property builder for [flags] field.
-     */
-    private class Flag(val flag: Long) : Serializable {
-        operator fun getValue(p: ServerProfile, kp: KProperty<*>) = (p.flags and flag) != 0L
-        operator fun setValue(p: ServerProfile, kp: KProperty<*>, value: Boolean) {
-            p.flags = if (value) p.flags or flag else p.flags and flag.inv()
-        }
-    }
-
-    /**
-     * Flag to emit legacy X KeySym events in certain cases.
-     */
-    var fLegacyKeySym by Flag(FLAG_LEGACY_KEYSYM)
-
-    /**
-     * Flag to insert artificial delay before UP event of left-click.
-     */
-    var fButtonUpDelay by Flag(FLAG_BUTTON_UP_DELAY)
-
-    /**
-     * If zoom is locked, user requests to change [zoom1] & [zoom2]
-     * should be ignored.
-     */
-    var fZoomLocked by Flag(FLAG_ZOOM_LOCKED)
-
-}
+) : Serializable

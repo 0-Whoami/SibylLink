@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2020  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
 
 package sibyllink.vnc.ui.vnc
 
@@ -12,12 +5,12 @@ import android.content.Context
 import android.graphics.PointF
 import android.view.GestureDetector
 import android.view.GestureDetector.SimpleOnGestureListener
-import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.ViewConfiguration
 import androidx.core.view.InputDeviceCompat
 import androidx.core.view.MotionEventCompat
+import sibyllink.vnc.util.AppPreferences.swipeSensitivity
 import sibyllink.vnc.viewmodel.VncViewModel
 import kotlin.math.PI
 import kotlin.math.abs
@@ -27,8 +20,8 @@ import kotlin.math.max
 /**
  * Handler for touch events. It detects various gestures and notifies [dispatcher].
  */
-class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: Dispatcher)
-    : ScaleGestureDetector.OnScaleGestureListener, SimpleOnGestureListener() {
+class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: Dispatcher) :
+    ScaleGestureDetector.OnScaleGestureListener, SimpleOnGestureListener() {
 
     //Extension to easily access touch position
     private fun MotionEvent.point() = PointF(x, y)
@@ -43,9 +36,7 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
     }
 
     fun onGenericMotionEvent(ev: MotionEvent): Boolean {
-        if (ev.action == MotionEvent.ACTION_SCROLL &&
-            ev.isFromSource(InputDeviceCompat.SOURCE_ROTARY_ENCODER)
-        ) {
+        if (ev.action == MotionEvent.ACTION_SCROLL && ev.isFromSource(InputDeviceCompat.SOURCE_ROTARY_ENCODER)) {
             val delta = -ev.getAxisValue(MotionEventCompat.AXIS_SCROLL) * 20
             dispatcher.onRotaryScroll(delta)
         }
@@ -56,12 +47,10 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
     private fun handleGestureStartStop(event: MotionEvent) {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> dispatcher.onGestureStart()
-            MotionEvent.ACTION_UP,
-            MotionEvent.ACTION_CANCEL -> dispatcher.onGestureStop(event.point())
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> dispatcher.onGestureStop()
         }
-        dispatcher.mousePosition=event.point()
+        dispatcher.mousePosition = event.point()
     }
-
 
 
     /****************************************************************************************
@@ -70,8 +59,6 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
     private val scaleDetector = ScaleGestureDetector(viewModel.app, this).apply { isQuickScaleEnabled = false }
     private val gestureDetector = GestureDetectorEx(viewModel.app, FingerGestureListener())
     private val swipeVsScale = SwipeVsScale()
-    private val longPressSwipeEnabled = false
-    private val swipeSensitivity = viewModel.pref.input.gesture.swipeSensitivity
 
 
     private fun handleGestureEvent(event: MotionEvent): Boolean {
@@ -83,55 +70,35 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
     override fun onScaleBegin(detector: ScaleGestureDetector) = true
     override fun onScaleEnd(detector: ScaleGestureDetector) {}
     override fun onScale(detector: ScaleGestureDetector): Boolean {
-        if (swipeVsScale.shouldScale())
-            dispatcher.onScale(detector.scaleFactor, detector.focusX, detector.focusY)
+        if (swipeVsScale.shouldScale()) viewModel.updateZoom(detector.scaleFactor, detector.focusX, detector.focusY)
         return true
     }
 
     private inner class FingerGestureListener : GestureDetectorEx.GestureListenerEx {
 
-        override fun onSingleTapConfirmed(e: MotionEvent) = dispatcher.onTap1(e.point())
-        override fun onDoubleTapConfirmed(e: MotionEvent) = dispatcher.onDoubleTap(e.point())
+        override fun onSingleTapConfirmed(e: MotionEvent) = dispatcher.onTap1()
+        override fun onDoubleTapConfirmed(e: MotionEvent) = dispatcher.onDoubleTap()
 
         override fun onMultiFingerTap(e: MotionEvent, fingerCount: Int) {
             when (fingerCount) {
-                2 -> dispatcher.onTap2(e.point())
+                2 -> dispatcher.onTap2()
                 // Taps by 3+ fingers are not exposed yet
             }
         }
 
-        override fun onLongPress(e: MotionEvent) {
-            viewModel.frameViewRef.get()?.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-
-            // If long-press-swipe is disabled, we can dispatch long-press immediately
-            if (!longPressSwipeEnabled) dispatcher.onLongPress(e.point())
-        }
-
-        override fun onLongPressConfirmed(e: MotionEvent) {
-            if (longPressSwipeEnabled) dispatcher.onLongPress(e.point())
-        }
-
-
-        override fun onScroll(e1: MotionEvent, e2: MotionEvent, dx: Float, dy: Float) {
-            val startPoint = e1.point()
-            val currentPoint = e2.point()
+        override fun onScroll(e2: MotionEvent, dx: Float, dy: Float) {
             val normalizedDx = dx * swipeSensitivity
             val normalizedDy = dy * swipeSensitivity
 
             when (e2.pointerCount) {
-                1 -> dispatcher.onSwipe1(currentPoint, normalizedDx, normalizedDy)
-                2 -> if (swipeVsScale.shouldSwipe())
-                    dispatcher.onSwipe2(startPoint, normalizedDx, normalizedDy)
+                1 -> dispatcher.onSwipe1(normalizedDx, normalizedDy)
+                2 -> if (swipeVsScale.shouldSwipe()) dispatcher.onSwipe2(normalizedDx, normalizedDy)
             }
         }
 
 
         override fun onScrollAfterDoubleTap(e1: MotionEvent, e2: MotionEvent, dx: Float, dy: Float) {
-            dispatcher.onDoubleTapSwipe(e2.point(), dx, dy)
-        }
-
-        override fun onFling(velocityX: Float, velocityY: Float) {
-
+            dispatcher.onDoubleTapSwipe(dx, dy)
         }
     }
 
@@ -177,14 +144,11 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
             fun onDoubleTapConfirmed(e: MotionEvent)
             fun onMultiFingerTap(e: MotionEvent, fingerCount: Int)
 
-            fun onLongPress(e: MotionEvent)
-            fun onLongPressConfirmed(e: MotionEvent)
+            fun onScroll(e2: MotionEvent, dx: Float, dy: Float)
 
-            fun onScroll(e1: MotionEvent, e2: MotionEvent, dx: Float, dy: Float)
-//            fun onScrollAfterLongPress(e1: MotionEvent, e2: MotionEvent, dx: Float, dy: Float)
+            //            fun onScrollAfterLongPress(e1: MotionEvent, e2: MotionEvent, dx: Float, dy: Float)
             fun onScrollAfterDoubleTap(e1: MotionEvent, e2: MotionEvent, dx: Float, dy: Float)
 
-            fun onFling(velocityX: Float, velocityY: Float)
         }
 
 
@@ -214,7 +178,6 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
         private val innerDetector2 = GestureDetector(context, InnerListener2()).apply { setIsLongpressEnabled(false) }
         private val innerDetector3 = GestureDetector(context, InnerListener3()).apply { setIsLongpressEnabled(false) }
 
-        private var longPressDetected = false
         private var doubleTapDetected = false
         private var scrolling = false
         private var maxFingerDown = 0
@@ -224,19 +187,6 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
         private inner class InnerListener1 : SimpleOnGestureListener() {
             override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
                 listener.onSingleTapConfirmed(e)
-                return true
-            }
-
-            override fun onLongPress(e: MotionEvent) {
-                if (doubleTapDetected)
-                    return // Ignore long-press triggered during double-tap-swipe
-
-                longPressDetected = true
-                listener.onLongPress(e)
-            }
-
-            override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
-                listener.onFling(velocityX, velocityY)
                 return true
             }
         }
@@ -249,11 +199,13 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
 
             override fun onDoubleTapEvent(e: MotionEvent) = innerDetector3.onTouchEvent(e)
 
-            override fun onScroll(e1: MotionEvent?, e2: MotionEvent, dx: Float, dy: Float) = handleScroll(e1, e2, dx, dy)
+            override fun onScroll(e1: MotionEvent?, e2: MotionEvent, dx: Float, dy: Float) =
+                handleScroll(e1, e2, dx, dy)
         }
 
         private inner class InnerListener3 : SimpleOnGestureListener() {
-            override fun onScroll(e1: MotionEvent?, e2: MotionEvent, dx: Float, dy: Float) = handleScroll(e1, e2, dx, dy)
+            override fun onScroll(e1: MotionEvent?, e2: MotionEvent, dx: Float, dy: Float) =
+                handleScroll(e1, e2, dx, dy)
         }
 
         private fun handleScroll(e1: MotionEvent?, e2: MotionEvent, dx: Float, dy: Float): Boolean {
@@ -271,10 +223,8 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
         }
 
         private fun callOnScroll(e1: MotionEvent, e2: MotionEvent, dx: Float, dy: Float) {
-            if (doubleTapDetected)
-                listener.onScrollAfterDoubleTap(e1, e2, dx, dy)
-            else if (!longPressDetected)
-                listener.onScroll(e1, e2, dx, dy)
+            if (doubleTapDetected) listener.onScrollAfterDoubleTap(e1, e2, dx, dy)
+            else listener.onScroll(e2, dx, dy)
         }
 
         /**
@@ -296,15 +246,15 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
 
                 MotionEvent.ACTION_UP -> {
                     currentDownEvent?.let { downEvent ->
-                        if (longPressDetected && !doubleTapDetected && !scrolling && maxFingerDown <= 1)
-                            listener.onLongPressConfirmed(downEvent)
 
-                        if (doubleTapDetected && !longPressDetected && !scrolling && maxFingerDown <= 1)
-                            listener.onDoubleTapConfirmed(downEvent)
+                        if (doubleTapDetected && !scrolling && maxFingerDown <= 1) listener.onDoubleTapConfirmed(
+                            downEvent
+                        )
 
                         val gestureDuration = (e.eventTime - downEvent.eventTime)
-                        if (maxFingerDown > 1 && !scrolling && gestureDuration < ViewConfiguration.getDoubleTapTimeout())
-                            listener.onMultiFingerTap(downEvent, maxFingerDown)
+                        if (maxFingerDown > 1 && !scrolling && gestureDuration < ViewConfiguration.getDoubleTapTimeout()) listener.onMultiFingerTap(
+                            downEvent, maxFingerDown
+                        )
                     }
 
                     reset()
@@ -317,7 +267,6 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
         }
 
         private fun reset() {
-            longPressDetected = false
             doubleTapDetected = false
             scrolling = false
             maxFingerDown = 0
@@ -360,10 +309,7 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
         fun onTouchEvent(e: MotionEvent) {
 
             when (e.actionMasked) {
-                MotionEvent.ACTION_DOWN,
-                MotionEvent.ACTION_CANCEL,
-                MotionEvent.ACTION_UP,
-                MotionEvent.ACTION_POINTER_UP -> {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
                     detecting = false
                     scaleDetected = false
                     swipeDetected = false
@@ -408,8 +354,7 @@ class TouchHandler(private val viewModel: VncViewModel, private val dispatcher: 
          * Decides if gesture can be considered a swipe/scale
          */
         private fun decide() {
-            if (!detecting)
-                return
+            if (!detecting) return
 
             val t1 = theta(f1Start, f1Current)
             val t2 = theta(f2Start, f2Current)

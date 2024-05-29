@@ -1,20 +1,9 @@
-/*
- * Copyright (c) 2020  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
 
 package sibyllink.vnc.ui.vnc
 
-import android.os.Build
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
-import sibyllink.vnc.util.AppPreferences
-import sibyllink.vnc.vnc.XKeySym
 import sibyllink.vnc.vnc.XKeySymAndroid
-import sibyllink.vnc.vnc.XKeySymAndroid.updateKeyMap
 import sibyllink.vnc.vnc.XKeySymUnicode
 import sibyllink.vnc.vnc.XTKeyCode
 
@@ -49,7 +38,6 @@ import sibyllink.vnc.vnc.XTKeyCode
  *
  * a. Key code of [KeyEvent]               (may not be available, e.g. in case of [KeyEvent.ACTION_MULTIPLE])
  * b. Unicode character of [KeyEvent]      (may not be available, e.g. in case of [KeyEvent.KEYCODE_F1])
- * c. Current [cfLegacyKeysym]
  *
  *
  *-                                 [KeyEvent]
@@ -83,7 +71,7 @@ import sibyllink.vnc.vnc.XTKeyCode
  * [X Windows System Protocol](https://www.x.org/releases/X11R7.7/doc/xproto/x11protocol.html#keysym_encoding)
  *
  */
-class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym: Boolean, prefs: AppPreferences) {
+class KeyHandler(private val dispatcher: Dispatcher) {
 
     /**
      * Pre-KeyEvent hook.
@@ -107,10 +95,9 @@ class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym:
     }
 
     fun onKeyEvent(event: KeyEvent): Boolean {
-        if (shouldIgnoreEvent(event))
-            return false
+        if (shouldIgnoreEvent(event)) return false
 
-        return handleKeyEvent(preProcessEvent(event))
+        return handleKeyEvent(event)
     }
 
 
@@ -120,32 +107,10 @@ class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym:
     private fun handleKeyEvent(event: KeyEvent): Boolean {
 
         //Deprecated action types are still received for non-ASCII characters
-        @Suppress("DEPRECATION")
         when (event.action) {
 
             KeyEvent.ACTION_DOWN -> return emitForKeyEvent(event.keyCode, getUnicodeChar(event), true, event.scanCode)
             KeyEvent.ACTION_UP -> return emitForKeyEvent(event.keyCode, getUnicodeChar(event), false, event.scanCode)
-
-            KeyEvent.ACTION_MULTIPLE -> {
-                if (event.keyCode == KeyEvent.KEYCODE_UNKNOWN) {
-
-                    // Here, only Unicode characters are available.
-                    for (uChar in toCodePoints(event.characters)) {
-                        emitForKeyEvent(0, uChar, true)
-                        emitForKeyEvent(0, uChar, false)
-                    }
-
-                } else {
-
-                    // Here, only keyCode is available.
-                    // According to Android docs, this case doesn't happen anymore.
-                    for (i in 1..event.repeatCount) {
-                        emitForKeyEvent(event.keyCode, 0, true)
-                        emitForKeyEvent(event.keyCode, 0, false)
-                    }
-                }
-                return true
-            }
         }
         return false
     }
@@ -157,17 +122,16 @@ class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym:
     private fun emitForKeyEvent(keyCode: Int, unicodeChar: Int, isDown: Boolean, scanCode: Int = 0): Boolean {
         val xtCode = if (scanCode == 0) 0 else XTKeyCode.fromAndroidScancode(scanCode)
 
-        if (handleDiacritics(keyCode, unicodeChar, isDown))
-            return true
+        if (handleDiacritics(keyCode, unicodeChar, isDown)) return true
 
         // Always emit using keyCode for these because Android returns a unicodeChar
         // for these but most servers don't handle their Unicode characters.
         when (keyCode) {
-            KeyEvent.KEYCODE_ENTER,
-            KeyEvent.KEYCODE_NUMPAD_ENTER,
-            KeyEvent.KEYCODE_SPACE,
-            KeyEvent.KEYCODE_TAB ->
-                return emitForAndroidKeyCode(keyCode, isDown, xtCode)
+            KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER, KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_TAB -> return emitForAndroidKeyCode(
+                keyCode,
+                isDown,
+                xtCode
+            )
         }
 
         // We prefer to use unicodeChar even when keyCode is available because
@@ -175,10 +139,8 @@ class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym:
         // As Android takes meta keys into account when calculating unicodeChar,
         // it works well with these servers.
 
-        if (unicodeChar != 0)
-            return emitForUnicodeChar(unicodeChar, isDown, xtCode)
-        else
-            return emitForAndroidKeyCode(keyCode, isDown, xtCode)
+        return if (unicodeChar != 0) emitForUnicodeChar(unicodeChar, isDown, xtCode)
+        else emitForAndroidKeyCode(keyCode, isDown, xtCode)
     }
 
     /**
@@ -190,16 +152,10 @@ class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym:
     }
 
     /**
-     * Emits either Unicode KeySym or legacy KeySym for [uChar], depending on [cfLegacyKeysym].
+     * Emits either Unicode KeySym or legacy KeySym for [uChar]
      */
     private fun emitForUnicodeChar(uChar: Int, isDown: Boolean, xtCode: Int = 0): Boolean {
-        var uKeySym = 0
-
-        if (cfLegacyKeysym)
-            uKeySym = XKeySymUnicode.getLegacyKeySymForUnicodeChar(uChar)
-
-        if (uKeySym == 0)
-            uKeySym = XKeySymUnicode.getKeySymForUnicodeChar(uChar)
+        val uKeySym = XKeySymUnicode.getKeySymForUnicodeChar(uChar)
 
 
         // If we are generating legacy KeySym and the character is uppercase,
@@ -207,13 +163,11 @@ class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym:
         // handle them. This is just a compat shim and ideally server should
         // support Unicode KeySym.
         val shouldFakeShift = uKeySym in 0x100..0xfffe && uChar.toChar().isUpperCase()
-        if (shouldFakeShift)
-            emitForAndroidKeyCode(KeyEvent.KEYCODE_SHIFT_LEFT, true)
+        if (shouldFakeShift) emitForAndroidKeyCode(KeyEvent.KEYCODE_SHIFT_LEFT, true)
 
         emit(uKeySym, isDown, xtCode)
 
-        if (shouldFakeShift)
-            emitForAndroidKeyCode(KeyEvent.KEYCODE_SHIFT_LEFT, false)
+        if (shouldFakeShift) emitForAndroidKeyCode(KeyEvent.KEYCODE_SHIFT_LEFT, false)
 
         return true
     }
@@ -223,8 +177,7 @@ class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym:
      * Sends given X key to [dispatcher].
      */
     private fun emit(keySym: Int, isDown: Boolean, xtCode: Int = 0): Boolean {
-        if (keySym == 0)
-            return false
+        if (keySym == 0) return false
 
         return dispatcher.onXKey(keySym, xtCode, isDown)
     }
@@ -242,8 +195,7 @@ class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym:
      */
     private fun getUnicodeChar(event: KeyEvent): Int {
         val uChar = event.unicodeChar
-        if (uChar != 0 || event.metaState == 0)
-            return uChar
+        if (uChar != 0 || event.metaState == 0) return uChar
 
         // Try without Alt/Ctrl
         val altCtrl = KeyEvent.META_ALT_MASK or KeyEvent.META_CTRL_MASK
@@ -262,8 +214,7 @@ class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym:
         // the number keycode (e.g. KEYCODE_NUMPAD_7) first. And if apps don't
         // handle that, it will fallback to secondary action (e.g. KEYCODE_MOVE_HOME).
         // So we have to ignore the first events when NumLock is off.
-        return (keyCode in KeyEvent.KEYCODE_NUMPAD_0..KeyEvent.KEYCODE_NUMPAD_9
-                || keyCode == KeyEvent.KEYCODE_NUMPAD_DOT) && !event.isNumLockOn
+        return (keyCode in KeyEvent.KEYCODE_NUMPAD_0..KeyEvent.KEYCODE_NUMPAD_9 || keyCode == KeyEvent.KEYCODE_NUMPAD_DOT) && !event.isNumLockOn
     }
 
     /************************************************************************************
@@ -302,21 +253,17 @@ class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym:
         if (!isAccent && isUp && !accentSequence.contains(maskedChar)) return false  // Spurious key-ups
         if (KeyEvent.isModifierKey(keyCode)) return false // Modifier keys are passed-on to the server
 
-        if (isDown)
-            accentSequence.add(maskedChar)
+        if (isDown) accentSequence.add(maskedChar)
 
         if (accentSequence.size <= 1) // Nothing to compose yet
             return true
 
         var composed = accentSequence.last()
-        for (i in 0 until accentSequence.lastIndex)
-            composed = KeyEvent.getDeadChar(accentSequence[i], composed)
+        for (i in 0 until accentSequence.lastIndex) composed = KeyEvent.getDeadChar(accentSequence[i], composed)
 
-        if (composed != 0)
-            emitForUnicodeChar(composed, isDown)
+        if (composed != 0) emitForUnicodeChar(composed, isDown)
 
-        if (isUp && (composed != 0 || !isAccent))
-            accentSequence.clear()
+        if (isUp && (composed != 0 || !isAccent)) accentSequence.clear()
 
         return true
     }
@@ -345,28 +292,6 @@ class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym:
     }
 
     /************************************************************************************
-     * Custom key-mappings
-     ***********************************************************************************/
-
-    init {
-        if (prefs.input.kmLanguageSwitchToSuper) updateKeyMap(KeyEvent.KEYCODE_LANGUAGE_SWITCH, XKeySym.XK_Super_L)
-        if (prefs.input.kmRightAltToSuper) updateKeyMap(KeyEvent.KEYCODE_ALT_RIGHT, XKeySym.XK_Super_L)
-    }
-
-    // We can't map Back key to Escape inside init because we don't
-    // want to affect Back key events coming from Navigation Bar.
-    // So we have to test each event.
-    private val kmBackToEscape = prefs.input.kmBackToEscape
-
-    private fun preProcessEvent(event: KeyEvent): KeyEvent {
-        if (event.keyCode == KeyEvent.KEYCODE_BACK && kmBackToEscape
-            && (event.flags and KeyEvent.FLAG_VIRTUAL_HARD_KEY == 0))
-            return KeyEvent(event.action, KeyEvent.KEYCODE_ESCAPE)
-
-        return event
-    }
-
-    /************************************************************************************
      * Convert String to Array of Unicode code-points
      ***********************************************************************************/
 
@@ -374,8 +299,7 @@ class KeyHandler(private val dispatcher: Dispatcher, private val cfLegacyKeysym:
 
     private fun toCodePoints(string: String): IntArray {
         //Handle simple & most probable case
-        if (string.length == 1)
-            return cpCache.apply { this[0] = string[0].code }
+        if (string.length == 1) return cpCache.apply { this[0] = string[0].code }
 
         return string.codePoints().toArray()
     }

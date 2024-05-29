@@ -1,11 +1,3 @@
-/*
- * Copyright (c) 2020  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
-
 package sibyllink.vnc.ui.vnc
 
 import android.annotation.SuppressLint
@@ -64,7 +56,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -93,7 +84,6 @@ import androidx.wear.compose.material.Text
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import sibyllink.vnc.model.ServerProfile
-import sibyllink.vnc.ui.home.HomeActivity
 import sibyllink.vnc.viewmodel.VncViewModel
 import sibyllink.vnc.viewmodel.VncViewModel.State.Companion.isConnected
 import sibyllink.vnc.viewmodel.VncViewModel.State.Companion.isDisconnected
@@ -161,9 +151,9 @@ class PopupPosition : PopupPositionProvider {
 class VncActivity : ComponentActivity() {
 
     lateinit var viewModel: VncViewModel
-    private val dispatcher by lazy { Dispatcher(this) }
+    private val dispatcher by lazy { Dispatcher(viewModel) }
     val touchHandler by lazy { TouchHandler(viewModel, dispatcher) }
-    val keyHandler by lazy { KeyHandler(dispatcher, viewModel.profile.fLegacyKeySym, viewModel.pref) }
+    val keyHandler by lazy { KeyHandler(dispatcher) }
     private var restoredFromBundle = false
     private var wasConnectedWhenStopped = false
     private var onStartTime = 0L
@@ -266,32 +256,36 @@ class VncActivity : ComponentActivity() {
 
     @Composable
     fun IconButton(enable: Boolean = false, icon: ImageVector, onClick: () -> Unit) {
-        Icon(imageVector = icon,
-             contentDescription = null,
-             modifier = Modifier
-                 .padding(5.dp)
-                 .background(if (enable) Color(0xf58692fc) else Color.White.copy(alpha = .8f), CircleShape)
-                 .padding(5.dp)
-                 .aspectRatio(1f)
-                 .clickable { onClick() },
-             tint = if (enable) Color.White else Color.Black)
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier
+                .padding(5.dp)
+                .background(if (enable) Color(0xf58692fc) else Color.White.copy(alpha = .8f), CircleShape)
+                .padding(5.dp)
+                .aspectRatio(1f)
+                .clickable { onClick() },
+            tint = if (enable) Color.White else Color.Black
+        )
     }
 
     @Composable
     fun TextButton(enable: Boolean = false, text: String, onClick: () -> Unit) {
-        Text(text = text,
-             modifier = Modifier
-                 .aspectRatio(1f)
-                 .padding(5.dp)
-                 .background(if (enable) Color(0xf58692fc) else Color.White.copy(alpha = .8f), CircleShape)
-                 .padding(5.dp)
-                 .wrapContentHeight()
-                 .clickable { onClick() },
-             color = if (enable) Color.White else Color.Black,
-             fontSize = 8.sp,
-             textAlign = TextAlign.Center,
-             fontWeight = FontWeight.Bold,
-             maxLines = 1)
+        Text(
+            text = text,
+            modifier = Modifier
+                .aspectRatio(1f)
+                .padding(5.dp)
+                .background(if (enable) Color(0xf58692fc) else Color.White.copy(alpha = .8f), CircleShape)
+                .padding(5.dp)
+                .wrapContentHeight()
+                .clickable { onClick() },
+            color = if (enable) Color.White else Color.Black,
+            fontSize = 8.sp,
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
+        )
 
     }
 
@@ -408,7 +402,6 @@ class VncActivity : ComponentActivity() {
         super.onStop()
         frameView.onPause()
         wasConnectedWhenStopped = viewModel.state.value.isConnected
-        startActivity(Intent(this, HomeActivity::class.java))
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -461,7 +454,7 @@ class VncActivity : ComponentActivity() {
             retryConnection(true)
         }
 
-        if (autoReconnecting || !viewModel.pref.server.autoReconnect) return
+        if (autoReconnecting) return
 
         autoReconnecting = true
         lifecycleScope.launch {

@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2020  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
 
 package sibyllink.vnc.ui.vnc.gl
 
@@ -31,7 +24,7 @@ import android.util.Log
 object ShaderCompiler {
 
 
-    fun compileShader(type: Int, shaderText: String): Int {
+    private fun compileShader(type: Int, shaderText: String): Int {
         val shaderObjectId = glCreateShader(type)
         if (shaderObjectId == 0) {
             return 0
@@ -49,7 +42,7 @@ object ShaderCompiler {
         return shaderObjectId
     }
 
-    fun linkProgram(vertexShaderId: Int, fragmentShaderId: Int): Int {
+    private fun linkProgram(vertexShaderId: Int, fragmentShaderId: Int): Int {
         val programId = glCreateProgram()
         if (programId == 0) {
             return 0

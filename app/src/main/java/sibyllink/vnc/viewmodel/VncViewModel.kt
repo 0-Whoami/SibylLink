@@ -1,23 +1,12 @@
-/*
- * Copyright (c) 2020  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
-
 package sibyllink.vnc.viewmodel
 
 import android.app.Application
-import android.graphics.Bitmap
 import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -29,8 +18,6 @@ import sibyllink.vnc.util.setClipboardText
 import sibyllink.vnc.vnc.Messenger
 import sibyllink.vnc.vnc.UserCredential
 import sibyllink.vnc.vnc.VncClient
-import java.io.FileOutputStream
-import java.io.IOException
 import java.lang.ref.WeakReference
 
 /**
@@ -88,21 +75,13 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
      *
      */
     enum class State {
-        Created,
-        Connecting,
-        Connected,
-        Disconnected;
+        Created, Connecting, Connected, Disconnected;
 
         companion object {
             val State?.isConnected get() = (this == Connected)
             val State?.isDisconnected get() = (this == Disconnected)
         }
     }
-    fun saveBitmap(bitmap: Bitmap){
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, FileOutputStream(app.filesDir.absolutePath + "/${profile.id}.png"));
-    }
-    var screenShort by mutableStateOf(false)
-    fun takeSS(){screenShort=true}
 
     val client = VncClient(this)
 
@@ -151,7 +130,6 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
     fun initConnection() {
         if (state.value == State.Created) {
             state.value = State.Connecting
-            frameState.setZoom(profile.zoom1)
             launchConnection()
         }
     }
@@ -168,7 +146,7 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
                 Log.e("ReceiverCoroutine", "Connection failed", it)
             }
 
-            state.value=State.Disconnected
+            state.value = State.Disconnected
 
             //Wait until activity is finished and viewmodel is cleaned up.
             runCatching { awaitCancellation() }
@@ -178,30 +156,28 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
 
     private fun preConnect() {
 
-        client.configure(profile.viewOnly, profile.securityType, profile.useLocalCursor  /* Hardcoded to true */,
-                         profile.imageQuality, profile.useRawEncoding)
+        client.configure(
+            profile.viewOnly,
+            profile.securityType,
+            profile.useLocalCursor  /* Hardcoded to true */,
+            profile.imageQuality,
+            profile.useRawEncoding
+        )
 
-        if (profile.useRepeater)
-            client.setupRepeater(profile.idOnRepeater)
+        if (profile.useRepeater) client.setupRepeater(profile.idOnRepeater)
     }
 
     private fun connect() {
-        when (profile.channelType) {
-            ServerProfile.CHANNEL_TCP ->
-                client.connect(profile.host, profile.port)
 
-            else -> throw IOException("Unknown Channel: ${profile.channelType}")
-        }
-
-        state.value=State.Connected
+        client.connect(profile.host, profile.port)
+        state.value = State.Connected
 
         // Initial sync, slightly delayed to allow extended clipboard negotiations
-//        launchIO { delay(1000L); sendClipboardText() }
+        launchIO { delay(1000L); sendClipboardText() }
     }
 
     private fun processMessages() {
-        while (viewModelScope.isActive)
-            client.processServerMessage()
+        while (viewModelScope.isActive) client.processServerMessage()
     }
 
     private fun cleanup() {
@@ -214,7 +190,6 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
      **************************************************************************/
 
     fun updateZoom(scaleFactor: Float, fx: Float, fy: Float) {
-        if (profile.fZoomLocked) return
 
         val appliedScaleFactor = frameState.updateZoom(scaleFactor)
 
@@ -228,46 +203,16 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
         frameViewRef.get()?.requestRender()
     }
 
-    fun resetZoom() {
-        frameState.setZoom(1f)
-        frameViewRef.get()?.requestRender()
-    }
-
-    fun resetZoomToDefault() {
-        frameState.setZoom(profile.zoom1)
-        frameViewRef.get()?.requestRender()
-    }
-
-    fun setZoom(zoom1: Float) {
-        frameState.setZoom(zoom1)
-        frameViewRef.get()?.requestRender()
-    }
-
     fun panFrame(deltaX: Float, deltaY: Float) {
         frameState.pan(deltaX, deltaY)
         frameViewRef.get()?.requestRender()
-    }
-
-    fun moveFrameTo(x: Float, y: Float) {
-        frameState.moveTo(x, y)
-        frameViewRef.get()?.requestRender()
-    }
-
-    fun toggleZoomLock(enabled: Boolean) {
-        profile.fZoomLocked = enabled
-
-    }
-
-    fun saveZoom() {
-        profile.zoom1 = frameState.zoomScale
-
     }
 
     /**************************************************************************
      * Miscellaneous
      **************************************************************************/
 
-    fun sendClipboardText() {
+    private fun sendClipboardText() {
         if (client.connected) launchIO {
             getClipboardText(app)?.let { messenger.sendClipboardText(it) }
         }
@@ -279,7 +224,7 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
         // This is a protective measure against servers which send every 'selection' made on the server.
         // Setting clip text involves IPC, so these events can exhaust Binder resources, leading to ANRs.
         if (clipReceiverJob?.isActive == true) {
-            Log.w(javaClass.simpleName, "Dropping clip text received from server, previous text is still pending")
+            //"Dropping clip text received from server, previous text is still pending"
             return
         }
 
@@ -289,16 +234,6 @@ class VncViewModel(val profile: ServerProfile, app: Application) : BaseViewModel
     }
 
 
-    /**
-     * Resize remote desktop to match with local window size (if requested by user).
-     * In portrait mode, safe area is used instead of window to exclude the keyboard.
-     */
-    fun resizeRemoteDesktop() {
-        if (profile.resizeRemoteDesktop) frameState.let {
-            if (it.windowWidth > it.windowHeight)
-                messenger.setDesktopSize(it.windowWidth.toInt(), it.windowHeight.toInt())
-        }
-    }
     fun refreshFrameBuffer() {
         messenger.refreshFrameBuffer()
     }

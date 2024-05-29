@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2020  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
 
 package sibyllink.vnc.viewmodel
 
@@ -24,8 +17,6 @@ import kotlin.coroutines.EmptyCoroutineContext
  * Base view model.
  */
 open class BaseViewModel(val app: Application) : AndroidViewModel(app) {
-
-    val pref by lazy { AppPreferences() }
 
     /**
      * Launches a new coroutine using [viewModelScope], and executes [block] in that coroutine.

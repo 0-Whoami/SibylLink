@@ -45,8 +45,6 @@ class VncClient(private val observer: Observer) {
         fun onFramebufferUpdated()
         fun onFramebufferSizeChanged(width: Int, height: Int)
         fun onPointerMoved(x: Int, y: Int)
-
-        //fun onBell()
     }
 
     /**
@@ -56,28 +54,18 @@ class VncClient(private val observer: Observer) {
 
     init {
         nativePtr = nativeClientCreate()
-        if (nativePtr == 0L)
-            throw RuntimeException("Could not create native rfbClient!")
+        if (nativePtr == 0L) throw RuntimeException("Could not create native rfbClient!")
     }
 
     @Volatile
     var connected = false
         private set
 
-    /**
-     * Name of remote desktop
-     */
-    val desktopName; get() = nativeGetDesktopName(nativePtr)
-
-    /**
-     * Whether connection is encrypted
-     */
-    val isEncrypted; get() = nativeIsEncrypted(nativePtr)
 
     /**
      * In 'View-only' mode input to remote server is disabled
      */
-    var viewOnlyMode = false; private set
+    private var viewOnlyMode = false
 
     /**
      * Latest pointer position. See [moveClientPointer].
@@ -116,7 +104,13 @@ class VncClient(private val observer: Observer) {
      *
      * @param securityType RFB security type to use.
      */
-    fun configure(viewOnly: Boolean, securityType: Int, useLocalCursor: Boolean, imageQuality: Int, useRawEncoding: Boolean) {
+    fun configure(
+        viewOnly: Boolean,
+        securityType: Int,
+        useLocalCursor: Boolean,
+        imageQuality: Int,
+        useRawEncoding: Boolean
+    ) {
         viewOnlyMode = viewOnly
         nativeConfigure(nativePtr, securityType, useLocalCursor, imageQuality, useRawEncoding)
     }
@@ -140,8 +134,7 @@ class VncClient(private val observer: Observer) {
      * @param uSecTimeout Timeout in microseconds.
      */
     fun processServerMessage(uSecTimeout: Int = 1000000) {
-        if (!connected)
-            return
+        if (!connected) return
 
         if (!nativeProcessServerMessage(nativePtr, uSecTimeout)) {
             connected = false
@@ -202,23 +195,14 @@ class VncClient(private val observer: Observer) {
      */
     fun sendCutText(text: String) = ifConnectedAndInteractive {
         if (text != lastCutText) {
-            val sent = if (nativeIsUTF8CutTextSupported(nativePtr))
-                nativeSendCutText(nativePtr, text.toByteArray(StandardCharsets.UTF_8), true)
-            else
-                nativeSendCutText(nativePtr, text.toByteArray(StandardCharsets.ISO_8859_1), false)
-            if (sent)
-                lastCutText = text
+            val sent = if (nativeIsUTF8CutTextSupported(nativePtr)) nativeSendCutText(
+                nativePtr,
+                text.toByteArray(StandardCharsets.UTF_8),
+                true
+            )
+            else nativeSendCutText(nativePtr, text.toByteArray(StandardCharsets.ISO_8859_1), false)
+            if (sent) lastCutText = text
         }
-    }
-
-    /**
-     * Set remote desktop size to given dimensions.
-     * This needs server support to actually work.
-     * Non-positive [width] & [height] are ignored.
-     */
-    fun setDesktopSize(width: Int, height: Int) = ifConnected {
-        if (width > 0 && height > 0)
-            nativeSetDesktopSize(nativePtr, width, height)
     }
 
     /**
@@ -227,14 +211,6 @@ class VncClient(private val observer: Observer) {
     fun refreshFrameBuffer() = ifConnected {
         nativeRefreshFrameBuffer(nativePtr)
     }
-
-    /**
-     * Controls whether framebuffer update requests are sent automatically.
-     * It takes effect after the next call to [processServerMessage].
-     */
-    /*fun setAutomaticFrameBufferUpdates(enabled: Boolean) = ifConnected {
-        //autoFBRequestsQueued = enabled
-    }*/
 
     /**
      * Puts framebuffer contents in currently active OpenGL texture.
@@ -257,13 +233,11 @@ class VncClient(private val observer: Observer) {
     }
 
     private inline fun ifConnected(block: () -> Unit) {
-        if (connected)
-            block()
+        if (connected) block()
     }
 
     private inline fun ifConnectedAndInteractive(block: () -> Unit) = ifConnected {
-        if (!viewOnlyMode)
-            block()
+        if (!viewOnlyMode) block()
     }
 
     private fun applyCompatQuirks() {
@@ -274,7 +248,14 @@ class VncClient(private val observer: Observer) {
     }
 
     private external fun nativeClientCreate(): Long
-    private external fun nativeConfigure(clientPtr: Long, securityType: Int, useLocalCursor: Boolean, imageQuality: Int, useRawEncoding: Boolean)
+    private external fun nativeConfigure(
+        clientPtr: Long,
+        securityType: Int,
+        useLocalCursor: Boolean,
+        imageQuality: Int,
+        useRawEncoding: Boolean
+    )
+
     private external fun nativeInit(clientPtr: Long, host: String, port: Int): Boolean
     private external fun nativeSetDest(clientPtr: Long, host: String, port: Int)
     private external fun nativeProcessServerMessage(clientPtr: Long, uSecTimeout: Int): Boolean
@@ -324,8 +305,7 @@ class VncClient(private val observer: Observer) {
 
     @Keep
     private fun cbHandleCursorPos(x: Int, y: Int) {
-        if (!ignorePointerMovesByServer)
-            moveClientPointer(x, y)
+        if (!ignorePointerMovesByServer) moveClientPointer(x, y)
     }
 
 

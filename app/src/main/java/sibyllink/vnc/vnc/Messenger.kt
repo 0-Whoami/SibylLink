@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2020  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
 
 package sibyllink.vnc.vnc
 
@@ -80,20 +73,12 @@ class Messenger(private val client: VncClient) {
         return true
     }
 
-    fun insertButtonUpDelay() {
-        execute { runCatching { Thread.sleep(200) } }
-    }
-
     /**************************************************************************
      * Misc
      **************************************************************************/
 
     fun sendClipboardText(text: String) {
         execute { client.sendCutText(text) }
-    }
-
-    fun setDesktopSize(width: Int, height: Int) {
-        execute { client.setDesktopSize(width, height) }
     }
 
     fun refreshFrameBuffer() {

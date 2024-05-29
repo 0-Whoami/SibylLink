@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2020  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
 
 package sibyllink.vnc.ui.vnc.gl
 
@@ -25,7 +18,6 @@ import javax.microedition.khronos.opengles.GL10
 class Renderer(private val viewModel: VncViewModel) : GLSurfaceView.Renderer {
 
     private val projectionMatrix = FloatArray(16)
-    private val hideCursor = viewModel.pref.input.hideRemoteCursor
     private lateinit var program: FrameProgram
     private lateinit var frame: Frame
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -90,7 +82,7 @@ class Renderer(private val viewModel: VncViewModel) : GLSurfaceView.Renderer {
         program.setUniforms(projectionMatrix)
 
         viewModel.client.uploadFrameTexture()
-        if (!hideCursor) viewModel.client.uploadCursor()
+        viewModel.client.uploadCursor()
 
         frame.updateFbSize(state.fbWidth, state.fbHeight)
         frame.bind(program)

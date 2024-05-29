@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2020  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
 
 package sibyllink.vnc.ui.vnc.gl
 
@@ -46,9 +39,9 @@ class FrameProgram {
     val program = ShaderCompiler.buildProgram(Shaders.VERTEX_SHADER, Shaders.FRAGMENT_SHADER)
     val aPositionLocation = glGetAttribLocation(program, A_POSITION)
     val aTextureCoordinatesLocation = glGetAttribLocation(program, A_TEXTURE_COORDINATES)
-    val uProjectionLocation = glGetUniformLocation(program, U_PROJECTION)
-    val uTexUnitLocation = glGetUniformLocation(program, U_TEXTURE_UNIT)
-    val textureId = createTexture()
+    private val uProjectionLocation = glGetUniformLocation(program, U_PROJECTION)
+    private val uTexUnitLocation = glGetUniformLocation(program, U_TEXTURE_UNIT)
+    private val textureId = createTexture()
     var validated = false
 
 

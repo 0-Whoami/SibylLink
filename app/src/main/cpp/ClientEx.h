@@ -1,11 +1,3 @@
-/*
- * Copyright (c) 2022  Gaurav Ujjwal.
- *
- * SPDX-License-Identifier:  GPL-3.0-or-later
- *
- * See COPYING.txt for more details.
- */
-
 #ifndef AVNC_CLIENTEX_H
 #define AVNC_CLIENTEX_H
 
